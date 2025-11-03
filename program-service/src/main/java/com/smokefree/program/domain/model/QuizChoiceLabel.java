@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+// QuizChoiceLabel.java
 @Entity
 @Table(name = "quiz_choice_labels", schema = "program")
 @Getter @Setter
@@ -12,7 +13,8 @@ public class QuizChoiceLabel {
     @EmbeddedId
     private QuizChoiceLabelId id;
 
-    @MapsId("templateId") // map phần templateId/questionNo trong ID vào quan hệ
+    // Map FK (template_id, question_no) từ id.questionId
+    @MapsId("questionId")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumns({
             @JoinColumn(name = "template_id", referencedColumnName = "template_id"),
@@ -20,7 +22,7 @@ public class QuizChoiceLabel {
     })
     private QuizTemplateQuestion question;
 
-    @Column(name = "label", nullable = false)
-    private String label;    // “≤ 5 phút”, “6–15 phút”,…
-    // KHÔNG khai báo lại 'score' ở đây – đã nằm trong id
+    @Column(name = "label")
+    private String label;
 }
+

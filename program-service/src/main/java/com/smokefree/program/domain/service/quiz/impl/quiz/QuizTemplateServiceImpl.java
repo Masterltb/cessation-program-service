@@ -5,10 +5,12 @@ import com.smokefree.program.domain.model.*;
 import com.smokefree.program.domain.repo.QuizTemplateRepository;
 import com.smokefree.program.domain.service.quiz.QuizTemplateService;
 import com.smokefree.program.web.dto.quiz.template.TemplateUpsertReq;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.UUID;
 
@@ -33,44 +35,44 @@ public class QuizTemplateServiceImpl implements QuizTemplateService {
         t.setId(UUID.randomUUID());
         t.setName(req.name());
         t.setLanguageCode(req.languageCode());
-        t.setScope(scope);                 // TODO: nếu entity của bạn không có field scope, bỏ dòng này
-        t.setOwnerId(ownerId);             // TODO: nếu không có ownerId, bỏ
         t.setVersion(1);
         t.setStatus(QuizTemplateStatus.DRAFT);
         t.setCreatedAt(Instant.now());
         t.setUpdatedAt(Instant.now());
 
-        // Questions
-        var questions = new LinkedHashSet<QuizTemplateQuestion>();
+        // NEW
+        t.setScope(scope);
+        t.setOwnerId(ownerId);
+
         if (req.questions() != null) {
             for (var q : req.questions()) {
-                QuizTemplateQuestion qq = new QuizTemplateQuestion();
-                QuizTemplateQuestionId qid = new QuizTemplateQuestionId();
+                var qid = new QuizTemplateQuestionId();
                 qid.setTemplateId(t.getId());
                 qid.setQuestionNo(q.questionNo());
+
+                var qq = new QuizTemplateQuestion();
                 qq.setId(qid);
                 qq.setTemplate(t);
                 qq.setText(q.text());
 
-                var choices = new LinkedHashSet<QuizChoiceLabel>();
                 if (q.choices() != null) {
                     for (var c : q.choices()) {
-                        QuizChoiceLabel cc = new QuizChoiceLabel();
-                        QuizChoiceLabelId cid = new QuizChoiceLabelId();
-                        cid.setTemplateId(t.getId());
-                        cid.setQuestionNo(q.questionNo());
+                        var cid = new QuizChoiceLabelId();
+                        cid.setQuestionId(qid);         // <— thay vì setTemplateId / setQuestionNo
                         cid.setScore(c.score());
+
+                        var cc = new QuizChoiceLabel();
                         cc.setId(cid);
-                        cc.setTemplate(t);
+                        cc.setQuestion(qq);
                         cc.setLabel(c.label());
-                        choices.add(cc);
+
+                        qq.getChoiceLabels().add(cc); // tên collection trong entity question
                     }
                 }
-                qq.setChoices(choices);
-                questions.add(qq);
+
+                t.getQuestions().add(qq);
             }
         }
-        t.setQuestions(questions);
         return templateRepo.save(t);
     }
 
@@ -84,27 +86,30 @@ public class QuizTemplateServiceImpl implements QuizTemplateService {
     }
 
     @Override
+    @Transactional
     public QuizTemplate cloneFromGlobal(UUID templateId, UUID coachId) {
         QuizTemplate src = templateRepo.findById(templateId).orElseThrow();
-        // chỉ cho clone template global (scope=system) nếu có
-        // TODO: nếu không có field scope thì bỏ validate này
+
         if (!"system".equalsIgnoreCase(src.getScope())) {
-            return src; // or throw
+            throw new IllegalStateException("Only system templates can be cloned.");
         }
 
-        TemplateUpsertReq req = new TemplateUpsertReq(
+        var req = new TemplateUpsertReq(
                 src.getName() + " (Coach Copy)",
                 src.getLanguageCode(),
-                src.getQuestions().stream().map(q ->
-                        new TemplateUpsertReq.QuestionReq(
+                src.getQuestions().stream()
+                        .sorted(Comparator.comparing(q -> q.getId().getQuestionNo()))
+                        .map(q -> new TemplateUpsertReq.QuestionReq(
                                 q.getId().getQuestionNo(),
                                 q.getText(),
-                                q.getChoices().stream().map(c ->
-                                        new TemplateUpsertReq.ChoiceReq(c.getId().getScore(), c.getLabel())
-                                ).toList()
-                        )
-                ).toList()
+                                q.getChoiceLabels().stream() // dùng đúng tên collection
+                                        .sorted(Comparator.comparing(c -> c.getId().getScore()))
+                                        .map(c -> new TemplateUpsertReq.ChoiceReq(c.getId().getScore(), c.getLabel()))
+                                        .toList()
+                        ))
+                        .toList()
         );
         return createCoachTemplate(req, coachId);
     }
+
 }

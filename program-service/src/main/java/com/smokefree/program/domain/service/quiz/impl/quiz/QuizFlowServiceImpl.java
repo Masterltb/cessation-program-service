@@ -10,6 +10,7 @@ import com.smokefree.program.web.dto.quiz.result.SubmitRes;
 import com.smokefree.program.web.error.ConflictException;
 import com.smokefree.program.web.error.ForbiddenException;
 import com.smokefree.program.web.error.NotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -55,15 +56,18 @@ public class QuizFlowServiceImpl implements QuizFlowService {
     }
 
     @Override
+    @Transactional
     public OpenAttemptRes openAttempt(UUID userId, UUID templateId) {
-        Program program = programRepo.findByUserId(userId).orElseThrow(() -> new NotFoundException("Program not found"));
-        // must be assigned to program
+        Program program = programRepo.findByUserId(userId)
+                .orElseThrow(() -> new NotFoundException("Program not found"));
+
         if (!assignmentRepo.existsByTemplateIdAndProgramId(templateId, program.getId())) {
             throw new ForbiddenException("Template not assigned to your program");
         }
-        // only one open attempt at a time
-        attemptRepo.findFirstByProgramIdAndTemplateIdAndStatus(program.getId(), templateId, AttemptStatus.OPEN)
-                .ifPresent(a -> { throw new ConflictException("An attempt is already open"); });
+
+        attemptRepo.findFirstByProgramIdAndTemplateIdAndStatus(
+                program.getId(), templateId, AttemptStatus.OPEN
+        ).ifPresent(a -> { throw new ConflictException("An attempt is already open"); });
 
         QuizTemplate t = templateRepo.findById(templateId).orElseThrow();
 
@@ -74,25 +78,30 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         at.setUserId(userId);
         at.setOpenedAt(Instant.now());
         at.setStatus(AttemptStatus.OPEN);
-        at.setAnswers(new LinkedHashSet<>());
+
+        // ✅ Đúng kiểu:
+        at.setAnswers(new ArrayList<QuizAnswer>());  // hoặc bỏ dòng này nếu entity đã có = new ArrayList<>()
         attemptRepo.save(at);
 
-        List<OpenAttemptRes.QuestionView> qs = t.getQuestions().stream().map(q ->
-                new OpenAttemptRes.QuestionView(
+        List<OpenAttemptRes.QuestionView> qs = t.getQuestions().stream()
+                .map(q -> new OpenAttemptRes.QuestionView(
                         q.getId().getQuestionNo(),
                         q.getText(),
-                        q.getChoices().stream()
+                        q.getChoiceLabels().stream()
+                                .sorted(Comparator.comparing(c -> c.getId().getScore()))
                                 .collect(Collectors.toMap(
                                         c -> c.getId().getScore(),
                                         QuizChoiceLabel::getLabel,
                                         (a, b) -> a,
                                         LinkedHashMap::new
                                 ))
-                )
-        ).toList();
+                ))
+                .toList();
 
         return new OpenAttemptRes(at.getId(), t.getId(), t.getVersion(), qs);
     }
+
+
 
     @Override
     public void saveAnswer(UUID userId, UUID templateId, UUID attemptId, AnswerReq req) {
@@ -149,7 +158,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
     private SeverityLevel toSeverity(int total) {
         // Chuẩn điểm ví dụ (10 câu, thang 1-5) => 10..50
         if (total <= 15) return SeverityLevel.LOW;
-        if (total <= 25) return SeverityLevel.MEDIUM; // hoặc MODERATE tùy enum của bạn
+        if (total <= 25) return SeverityLevel.MODERATE; // hoặc MODERATE tùy enum của bạn
         return SeverityLevel.HIGH;
     }
 }
