@@ -11,6 +11,8 @@ public final class SecurityUtil {
 
     public static UUID currentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("Authenticated user: " + (auth != null ? auth.getPrincipal() : "Anonymous"));
+
         if (auth == null) return null;
         Object p = auth.getPrincipal();
         if (p instanceof UserPrincipal up) {

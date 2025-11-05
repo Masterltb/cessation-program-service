@@ -8,41 +8,58 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.UUID;
 
 public class HeaderUserContextFilter extends OncePerRequestFilter {
+
     private final Environment env;
-    public HeaderUserContextFilter(Environment env) { this.env = env; }
+
+    public HeaderUserContextFilter(Environment env) {
+        this.env = env;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
 
-        // Nếu đã có auth (do filter khác set) thì thôi
-        if (SecurityContextHolder.getContext().getAuthentication() != null) {
-            chain.doFilter(req, res); return;
-        }
-
+        // Log nhận thông tin từ header
         String uid = req.getHeader("X-User-Id");
         String role = req.getHeader("X-User-Role");
 
-        boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
+        // Log toàn bộ các thông tin header để kiểm tra
+        System.out.println("Received headers - X-User-Id: " + uid + ", X-User-Role: " + role);
 
-        // Thiếu header:
-        if (uid == null || role == null || uid.isBlank() || role.isBlank()) {
-            if (isDev) { // dev: nhường cho DevAutoUserFilter
-                chain.doFilter(req, res); return;
-            }
-            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            res.setContentType("application/json");
-            res.getWriter().write("""
-        {"error":"unauthorized","message":"Missing or invalid X-User-Id / X-User-Role"}
-        """);
+        // Kiểm tra nếu đã có auth (do filter khác set) thì bỏ qua
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            System.out.println("Authentication already set, skipping HeaderUserContextFilter.");
+            chain.doFilter(req, res);
             return;
         }
 
-        // Có header thì cứ để DevAutoUserFilter set auth hoặc controller xử lý tiếp
-        // (hoặc bạn có thể tự set Authentication ở đây nếu muốn)
+        // Kiểm tra môi trường, xem có phải dev hay không
+        boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
+        System.out.println("Is dev profile: " + isDev);
+
+        // Kiểm tra nếu thiếu header, return lỗi nếu không phải môi trường dev
+        if (uid == null || role == null || uid.isBlank() || role.isBlank()) {
+            if (isDev) {
+                System.out.println("Dev environment: Passing request to next filter.");
+                chain.doFilter(req, res);
+                return;
+            }
+
+            // Log lỗi thiếu thông tin
+            System.out.println("Unauthorized: Missing or invalid X-User-Id / X-User-Role");
+
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            res.setContentType("application/json");
+            res.getWriter().write("""
+                {"error":"unauthorized","message":"Missing or invalid X-User-Id / X-User-Role"}
+                """);
+            return;
+        }
+
+        // Log việc tiếp tục với request nếu header hợp lệ
+        System.out.println("Valid headers received. Passing request to next filter.");
         chain.doFilter(req, res);
     }
 }
