@@ -24,10 +24,15 @@ public class SmokeEventServiceImpl implements SmokeEventService {
     @Override
     @Transactional
     public SmokeEvent create(UUID programId, CreateSmokeEventReq req) {
+        UUID current = com.smokefree.program.util.SecurityUtil.currentUserId();
+        if (current == null) {
+            throw new IllegalStateException("Missing authenticated user");
+        }
         SmokeEvent e = new SmokeEvent();
         e.setId(UUID.randomUUID());
         e.setProgramId(programId);
         e.setEventType(req.eventType());
+        e.setUserId(current);
         e.setEventAt(req.eventAt() != null ? req.eventAt() : OffsetDateTime.now(ZoneOffset.UTC));
         e.setNote(req.note());
         smokeRepo.save(e);

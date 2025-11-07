@@ -26,6 +26,9 @@ public class SmokeEvent {
     @Column(name="event_type", nullable=false, columnDefinition = "program.smoke_event_type")
     private SmokeEventType eventType = SmokeEventType.SMOKE;
 
+    @Column(name = "user_id", nullable = false)     // PHẢI có và KHÔNG set insertable=false
+    private UUID userId;
+
     @Column(name="note")
     private String note;
 
