@@ -46,7 +46,7 @@ public class CoachVipQuizServiceImpl implements CoachVipQuizService {
         per.setId(UUID.randomUUID());
         per.setName((newName == null || newName.isBlank()) ? base.getName() + " (VIP)" : newName);
         per.setStatus(QuizTemplateStatus.DRAFT);
-        per.setScope("coach");
+        per.setScope(QuizTemplateScope.COACH);
         per.setOwnerId(coachId);
         per = tplRepo.save(per);
 

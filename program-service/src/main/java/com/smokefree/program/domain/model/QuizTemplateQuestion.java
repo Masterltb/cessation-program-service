@@ -2,6 +2,8 @@ package com.smokefree.program.domain.model;
 
 import jakarta.persistence.*;
 import lombok.Getter; import lombok.Setter;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -25,7 +27,8 @@ public class QuizTemplateQuestion {
     private String questionText;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "type", nullable = false, columnDefinition = "program.question_type")
     private QuestionType type;
 
     @Column(name = "points")

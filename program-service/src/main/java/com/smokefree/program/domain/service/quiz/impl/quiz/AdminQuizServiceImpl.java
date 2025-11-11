@@ -1,5 +1,6 @@
 package com.smokefree.program.domain.service.quiz.impl.quiz;
 
+
 import com.smokefree.program.domain.model.*;
 import com.smokefree.program.domain.repo.QuizChoiceLabelRepository;
 import com.smokefree.program.domain.repo.QuizTemplateQuestionRepository;
@@ -9,6 +10,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -22,42 +24,70 @@ public class AdminQuizServiceImpl implements AdminQuizService {
 
     @Override
     public QuizTemplate createTemplate(String name) {
-        QuizTemplate t = QuizTemplate.builder()
-                .name(name)
-                .status(QuizTemplateStatus.DRAFT)
-                .ownerType(QuizTemplateOwnerType.SYSTEM)
-                .build();
+        QuizTemplate t = new QuizTemplate();
+        t.setId(UUID.randomUUID());
+        t.setName(name);
+        t.setVersion(1);
+        t.setStatus(QuizTemplateStatus.DRAFT);
+        t.setScope(QuizTemplateScope.SYSTEM);
+        t.setOwnerId(null);
+        t.setCreatedAt(Instant.now());
+        t.setUpdatedAt(Instant.now());
         return tplRepo.save(t);
     }
 
-    @Override public void publishTemplate(UUID templateId) {
+    @Override
+    public void publishTemplate(UUID templateId) {
         QuizTemplate t = tplRepo.findById(templateId)
                 .orElseThrow(() -> new IllegalArgumentException("Template not found"));
         t.setStatus(QuizTemplateStatus.PUBLISHED);
+        t.setPublishedAt(Instant.now());
+        t.setUpdatedAt(Instant.now());
         tplRepo.save(t);
     }
 
     @Override
-    public UUID addQuestion(UUID templateId, Integer orderNo, String text, String type, Integer points, String explanation) {
+    public QuizTemplateQuestionId addQuestion(
+            UUID templateId, Integer orderNo, String text, String type, Integer points, String explanation) {
+
+        QuizTemplate template = tplRepo.findById(templateId)
+                .orElseThrow(() -> new IllegalArgumentException("Template not found"));
+
+        QuizTemplateQuestionId id = new QuizTemplateQuestionId(templateId, orderNo);
+
         QuizTemplateQuestion q = new QuizTemplateQuestion();
-        q.setTemplateId(templateId);
-        q.setOrderNo(orderNo);
+        q.setId(id);
+        q.setTemplate(template);
         q.setQuestionText(text);
-        q.setType(QuestionType.valueOf(type));
+        q.setType(QuestionType.valueOf(type));   // truyền trực tiếp QuestionType để tránh sai chính tả
         q.setPoints(points);
         q.setExplanation(explanation);
-        return qRepo.save(q).getId();
+
+        qRepo.save(q);
+        return id;
     }
 
     @Override
-    public UUID addChoice(UUID questionId, String labelCode, String labelText, boolean isCorrect, Integer weight) {
+    public QuizChoiceLabelId addChoice(
+            UUID templateId, Integer questionNo,
+            String labelCode, String labelText,
+            Boolean correct, Integer weight) {
+
+        // Bảo đảm câu hỏi tồn tại để liên kết ManyToOne
+        QuizTemplateQuestionId qid = new QuizTemplateQuestionId(templateId, questionNo);
+        QuizTemplateQuestion question = qRepo.findById(qid)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found"));
+
+        QuizChoiceLabelId cid = new QuizChoiceLabelId(templateId, questionNo, labelCode);
+
         QuizChoiceLabel c = new QuizChoiceLabel();
-        c.setQuestionId(questionId);
-        c.setLabelCode(labelCode);
+        c.setId(cid);
+        c.setQuestion(question);         // đồng bộ templateId/questionNo trong PK
         c.setLabelText(labelText);
-        c.setCorrect(Boolean.TRUE.equals(isCorrect));
+        c.setCorrect(Boolean.TRUE.equals(correct));
         c.setWeight(weight);
-        return cRepo.save(c).getId();
+
+        cRepo.save(c);
+        return cid;
     }
 }
-

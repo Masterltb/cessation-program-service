@@ -8,6 +8,16 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.context.annotation.Profile;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
+
+@Profile("dev")
 @RestController
 @RequestMapping("/debug")
 public class DebugController {
@@ -19,4 +29,5 @@ public class DebugController {
         );
     }
 }
+
 

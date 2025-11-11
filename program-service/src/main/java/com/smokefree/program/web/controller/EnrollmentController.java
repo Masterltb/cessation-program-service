@@ -6,6 +6,8 @@ import com.smokefree.program.web.dto.enrollment.EnrollmentRes;
 import com.smokefree.program.web.dto.enrollment.StartEnrollmentReq;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,20 +23,23 @@ public class EnrollmentController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    public EnrollmentRes start(@RequestBody @Valid StartEnrollmentReq req) {
-        return service.startTrialOrPaid(SecurityUtil.currentUserId(), req);
+    public ResponseEntity<EnrollmentRes> start(@RequestBody @Valid StartEnrollmentReq req) {
+        EnrollmentRes res = service.startTrialOrPaid(SecurityUtil.currentUserId(), req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public List<EnrollmentRes> myEnrollments() {
-        return service.listByUser(SecurityUtil.currentUserId());
+    public ResponseEntity<List<EnrollmentRes>> myEnrollments() {
+        List<EnrollmentRes> list = service.listByUser(SecurityUtil.currentUserId());
+        return ResponseEntity.ok(list);
     }
 
     @PostMapping("/{id}/complete")
     @PreAuthorize("isAuthenticated()")
-    public void complete(@PathVariable UUID id) {
+    public ResponseEntity<Void> complete(@PathVariable UUID id) {
         service.complete(SecurityUtil.currentUserId(), id);
+        return ResponseEntity.noContent().build();
     }
 }
 

@@ -61,7 +61,8 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         Program program = programRepo.findByUserId(userId)
                 .orElseThrow(() -> new NotFoundException("Program not found"));
 
-        if (!assignmentRepo.existsByTemplateIdAndProgramId(templateId, program.getId())) {
+        boolean assigned = assignmentRepo.existsByTemplateIdAndProgramId(templateId, program.getId());
+        if (!assigned) {
             throw new ForbiddenException("Template not assigned to your program");
         }
 
@@ -78,20 +79,20 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         at.setUserId(userId);
         at.setOpenedAt(Instant.now());
         at.setStatus(AttemptStatus.OPEN);
-
-        // ✅ Đúng kiểu:
-        at.setAnswers(new ArrayList<QuizAnswer>());  // hoặc bỏ dòng này nếu entity đã có = new ArrayList<>()
+        at.setAnswers(new ArrayList<>()); // an toàn, tránh NPE khi map trống
         attemptRepo.save(at);
 
+        // Build list câu hỏi + map lựa chọn (labelCode -> labelText), giữ thứ tự ổn định
         List<OpenAttemptRes.QuestionView> qs = t.getQuestions().stream()
+                .sorted(Comparator.comparing(q -> q.getId().getQuestionNo()))
                 .map(q -> new OpenAttemptRes.QuestionView(
                         q.getId().getQuestionNo(),
-                        q.getText(),
+                        q.getQuestionText(),
                         q.getChoiceLabels().stream()
-                                .sorted(Comparator.comparing(c -> c.getId().getScore()))
+                                .sorted(Comparator.comparing(c -> c.getId().getLabelCode()))
                                 .collect(Collectors.toMap(
-                                        c -> c.getId().getScore(),
-                                        QuizChoiceLabel::getLabel,
+                                        c -> c.getId().getLabelCode(),
+                                        QuizChoiceLabel::getLabelText,
                                         (a, b) -> a,
                                         LinkedHashMap::new
                                 ))
