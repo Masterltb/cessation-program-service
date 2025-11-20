@@ -14,12 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -28,56 +25,52 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     private final ProgramRepository programRepo;
     private final PlanTemplateRepo planTemplateRepo;
-
+    private final ProgramCreationService programCreationService;
     @Override
     @Transactional
     public EnrollmentRes startTrialOrPaid(UUID userId, StartEnrollmentReq req) {
-        // 1) Không cho trùng program ACTIVE
         programRepo.findFirstByUserIdAndStatusAndDeletedAtIsNull(userId, ProgramStatus.ACTIVE)
                 .ifPresent(p -> { throw new ConflictException("User already has an ACTIVE program"); });
 
-        // 2) Lấy thông tin template (nếu truyền vào)
         UUID templateId = req.planTemplateId();
         String planCode = null;
         int planDays = 30; // default
 
         if (templateId != null) {
-            var tplOpt = planTemplateRepo.findById(templateId);
-            if (tplOpt.isPresent()) {
-                var tpl = tplOpt.get();
-                planCode = safeGetCode(tpl);      // getCode() hoặc getName()
-                Integer days = safeGetDays(tpl);  // getDays() nếu có; nếu không -> parse code
-                if (days != null) planDays = days;
-            }
+            var tpl = planTemplateRepo.findById(templateId)
+                    .orElseThrow(() -> new NotFoundException("Plan template not found: " + templateId));
+            planCode = tpl.getCode();
+            planDays = tpl.getTotalDays();
         }
 
-        // 3) Trial
-        Instant now = Instant.now();
-        Instant trialUntil = Boolean.TRUE.equals(req.trial()) ? now.plus(7, ChronoUnit.DAYS) : null;
+        Program p;
+        if (Boolean.TRUE.equals(req.trial())) {
+            // trial 7 ngày
+            p = programCreationService.createTrialProgram(userId, planDays, 7, null);
+        } else {
+            // gói trả phí ngay
+            p = programCreationService.createPaidProgram(userId, planDays, null);
+        }
 
-        // 4) Persist Program
-        Program p = Program.builder()
-                .userId(userId)
-                .planDays(planDays)
-                .status(ProgramStatus.ACTIVE)
-                .startDate(LocalDate.now(ZoneOffset.UTC))
-                .trialStartedAt(Boolean.TRUE.equals(req.trial()) ? now : null)
-                .trialEndExpected(trialUntil)
-                .build();
         p = programRepo.save(p);
 
-        // 5) Trả DTO (Program hiện chưa lưu link template → trả lại templateId/planCode từ req)
+        // đọc lại thời điểm hết trial từ entity
+        Instant trialUntil = p.getTrialEndExpected();
+
         return new EnrollmentRes(
                 p.getId(),
                 p.getUserId(),
-                templateId,          // Program chưa có cột này → chỉ trả về theo req
-                planCode,            // từ template (nếu có)
+                templateId,
+                planCode,
                 p.getStatus().name(),
-                p.getStartDate() == null ? null : p.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant(),
-                null,                // Program chưa có endAt
-                p.getTrialEndExpected()
+                p.getStartDate() == null
+                        ? null
+                        : p.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant(),
+                null,          // endAt: hiện chưa lưu trong Program
+                trialUntil     // trialUntil: chỉ khác null cho chương trình trial
         );
     }
+
 
     @Override
     @Transactional(readOnly = true)

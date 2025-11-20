@@ -1,3 +1,4 @@
+// src/main/java/com/smokefree/program/domain/service/quiz/impl/quiz/QuizAssignmentServiceImpl.java
 package com.smokefree.program.domain.service.quiz.impl.quiz;
 
 import com.smokefree.program.domain.model.AssignmentScope;
@@ -6,6 +7,7 @@ import com.smokefree.program.domain.model.QuizAssignmentOrigin;
 import com.smokefree.program.domain.repo.ProgramRepository;
 import com.smokefree.program.domain.repo.QuizAssignmentRepository;
 import com.smokefree.program.domain.service.quiz.QuizAssignmentService;
+import com.smokefree.program.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,22 +36,20 @@ public class QuizAssignmentServiceImpl implements QuizAssignmentService {
                                  AssignmentScope scope) {
         if (programIds == null || programIds.isEmpty()) return;
 
-        // "coach" ở tham số scope đang dùng như quyền tác giả
-//        boolean authorIsCoach = "coach".equalsIgnoreCase(scope);
-
-        // scope lưu xuống DB là enum AssignmentScope (DAY/WEEK/PROGRAM/CUSTOM)
-//        AssignmentScope assignmentScope = parseAssignmentScope(scope);
-
         UUID createdBy = (actorId != null) ? actorId : SYSTEM_USER_ID;
         Instant now = Instant.now();
 
+        boolean isCoach = SecurityUtil.hasRole("COACH") && !SecurityUtil.hasRole("ADMIN");
+
         List<QuizAssignment> batch = new ArrayList<>(programIds.size());
         for (UUID pid : programIds) {
-            // xác minh quyền coach
-//            if (authorIsCoach && !programRepo.existsByIdAndCoachId(pid, createdBy)) {
-//                continue;
-//            }
-            // tránh trùng
+
+            // Nếu là COACH (không phải ADMIN) → chỉ assign cho program mình phụ trách
+            if (isCoach && !programRepo.existsByIdAndCoachId(pid, createdBy)) {
+                continue;
+            }
+
+            // Tránh trùng assignment
             if (assignmentRepo.existsByTemplateIdAndProgramId(templateId, pid)) {
                 continue;
             }
@@ -59,8 +59,8 @@ public class QuizAssignmentServiceImpl implements QuizAssignmentService {
             a.setTemplateId(templateId);
             a.setProgramId(pid);
             a.setEveryDays(everyDays);
-            a.setScope(scope);                 // enum OK
-            a.setOrigin(QuizAssignmentOrigin.MANUAL);    // ★ bắt buộc để tránh NULL
+            a.setScope(scope);                          // DAY/WEEK/PROGRAM/CUSTOM
+            a.setOrigin(QuizAssignmentOrigin.MANUAL);   // tránh NULL
             a.setCreatedAt(now);
             a.setCreatedBy(createdBy);
 
@@ -72,16 +72,8 @@ public class QuizAssignmentServiceImpl implements QuizAssignmentService {
         }
     }
 
-//    private AssignmentScope parseAssignmentScope(String s) {
-//        try {
-//            return (s == null) ? AssignmentScope.DAY
-//                    : AssignmentScope.valueOf(s.trim().toUpperCase());
-//        } catch (IllegalArgumentException ignore) {
-//            return AssignmentScope.DAY;
-//        }
-//    }
-
     @Override
+    @Transactional(readOnly = true)
     public List<QuizAssignment> listAssignmentsByProgram(UUID programId) {
         return assignmentRepo.findByProgramId(programId);
     }

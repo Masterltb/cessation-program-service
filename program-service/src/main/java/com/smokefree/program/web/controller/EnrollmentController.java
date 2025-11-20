@@ -1,3 +1,4 @@
+// src/main/java/com/smokefree/program/web/controller/enrollment/EnrollmentController.java
 package com.smokefree.program.web.controller;
 
 import com.smokefree.program.domain.service.EnrollmentService;
@@ -6,40 +7,42 @@ import com.smokefree.program.web.dto.enrollment.EnrollmentRes;
 import com.smokefree.program.web.dto.enrollment.StartEnrollmentReq;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/enrollments")
+@RequiredArgsConstructor
 public class EnrollmentController {
 
-    private final EnrollmentService service;
+    private final EnrollmentService enrollmentService;
 
-    @PostMapping
+    /**
+     * Start trial 7 ngày từ 1 plan template.
+     * Frontend chỉ gọi endpoint này cho trial.
+     */
+    @PostMapping("/start-trial")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<EnrollmentRes> start(@RequestBody @Valid StartEnrollmentReq req) {
-        EnrollmentRes res = service.startTrialOrPaid(SecurityUtil.currentUserId(), req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(res);
+    public EnrollmentRes startTrial(@RequestBody @Valid StartEnrollmentReq req) {
+        UUID userId = SecurityUtil.requireUserId();
+        // ép trial = true để client không phá logic
+        StartEnrollmentReq forced = new StartEnrollmentReq(req.planTemplateId(), true);
+        return enrollmentService.startTrialOrPaid(userId, forced);
     }
 
-    @GetMapping("/me")
+    /**
+     * Start enrollment "paid" (sau khi payment service xác nhận thanh toán OK).
+     * Vẫn reuse logic trong EnrollmentServiceImpl nhưng trial=false.
+     */
+    @PostMapping("/start-paid")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<EnrollmentRes>> myEnrollments() {
-        List<EnrollmentRes> list = service.listByUser(SecurityUtil.currentUserId());
-        return ResponseEntity.ok(list);
+    public EnrollmentRes startPaid(@RequestBody @Valid StartEnrollmentReq req) {
+        UUID userId = SecurityUtil.requireUserId();
+        StartEnrollmentReq forced = new StartEnrollmentReq(req.planTemplateId(), false);
+        return enrollmentService.startTrialOrPaid(userId, forced);
     }
 
-    @PostMapping("/{id}/complete")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> complete(@PathVariable UUID id) {
-        service.complete(SecurityUtil.currentUserId(), id);
-        return ResponseEntity.noContent().build();
-    }
+    // Nếu đang có POST /api/enrollments cũ, có thể giữ tạm & @Deprecated
 }
-

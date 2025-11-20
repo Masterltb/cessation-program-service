@@ -1,12 +1,18 @@
-// com.smokefree.program.web.dto.quiz.template.TemplateUpsertReq
+// src/main/java/com/smokefree/program/web/dto/quiz/template/TemplateUpsertReq.java
 package com.smokefree.program.web.dto.quiz.template;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
 
 public record TemplateUpsertReq(
-        @NotBlank String name,
+        @NotBlank
+        String name,
+
+        @NotBlank
         String languageCode,
-        @Size(min = 1) List<QuestionUpsertReq> questions
+
+        @NotNull
+        List<QuestionUpsertReq> questions
 ) {}

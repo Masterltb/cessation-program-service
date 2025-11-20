@@ -2,46 +2,76 @@ package com.smokefree.program.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
-import java.time.*;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-@Entity @Table(name = "smoke_events", schema = "program")
+@Entity
+@Table(name = "smoke_events", schema = "program")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SmokeEvent {
-    @Id private UUID id;
 
-    @Column(name = "program_id", nullable = false) private UUID programId;
-    @Column(name = "user_id",    nullable = false) private UUID userId;
+    @Id
+    @GeneratedValue
+    private UUID id;
 
+    @Column(name = "program_id", nullable = false)
+    private UUID programId;
+
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
+    @Column(name = "occurred_at", nullable = false)
+    private OffsetDateTime occurredAt;
+
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "event_type", nullable = false,
-            columnDefinition = "program.smoke_event_type")
-    private SmokeEventType eventType;
-
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "kind", nullable = false,
-            columnDefinition = "program.smoke_event_kind")
+    @Column(name = "kind", nullable = false, columnDefinition = "program.smoke_event_kind")
     private SmokeEventKind kind;
 
-    @Column(name = "note") private String note;
+    @Column(name = "puffs")
+    private Integer puffs;
 
-    @Column(name = "event_at",    nullable = false) private OffsetDateTime eventAt;
-    @Column(name = "occurred_at", nullable = false) private OffsetDateTime occurredAt;
-    @Column(name = "created_at",  nullable = false) private Instant createdAt;
+    @Column(name = "cigarettes")
+    private Integer cigarettes;
+
+    @Column(name = "reason")
+    private String reason;
+
+    @Column(name = "repair_action")
+    private String repairAction;
+
+    @Column(name = "repaired")
+    private Boolean repaired;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "event_type", nullable = false, columnDefinition = "program.smoke_event_type")
+    private SmokeEventType eventType;
+
+    @Column(name = "event_at", nullable = false)
+    private OffsetDateTime eventAt;
+
+    @Column(name = "note")
+    private String note;
 
     @PrePersist
-    void pre() {
-        if (createdAt == null)  createdAt  = Instant.now();
-        if (eventAt == null)    eventAt    = OffsetDateTime.now(ZoneOffset.UTC);
+    void prePersist() {
+        Instant now = Instant.now();
+        if (createdAt == null) createdAt = now;
+        OffsetDateTime nowOffset = OffsetDateTime.now(ZoneOffset.UTC);
+        if (eventAt == null) eventAt = nowOffset;
         if (occurredAt == null) occurredAt = eventAt;
-        if (kind == null && eventType == SmokeEventType.SMOKE) {
-            kind = SmokeEventKind.SLIP;  // mặc định
-        }
     }
-
 }

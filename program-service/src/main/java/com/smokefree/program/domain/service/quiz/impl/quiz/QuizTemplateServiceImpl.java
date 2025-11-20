@@ -28,11 +28,11 @@ public class QuizTemplateServiceImpl implements QuizTemplateService {
     public QuizTemplate createSystemTemplate(TemplateUpsertReq req, UUID adminId) {
         return createTemplate(req, "system", adminId);
     }
-//
-//    @Override
-//    public QuizTemplate createCoachTemplate(TemplateUpsertReq req, UUID coachId) {
-//        return createTemplate(req, "coach", coachId);
-//    }
+
+    @Override
+    public QuizTemplate createCoachTemplate(TemplateUpsertReq req, UUID coachId) {
+        return createTemplate(req, "coach", coachId);
+    }
 
     private QuizTemplate createTemplate(
             com.smokefree.program.web.dto.quiz.template.TemplateUpsertReq req,
@@ -100,57 +100,57 @@ public class QuizTemplateServiceImpl implements QuizTemplateService {
 
 
 
-//
-//    @Override
-//    public QuizTemplate publish(UUID templateId, UUID actorId) {
-//        QuizTemplate t = templateRepo.findById(templateId).orElseThrow();
-//        t.setStatus(QuizTemplateStatus.PUBLISHED);
-//        t.setPublishedAt(Instant.now());
-//        t.setUpdatedAt(Instant.now());
-//        return templateRepo.save(t);
-//    }
-//
-//
-//    @Override
-//    @Transactional
-//    public QuizTemplate cloneFromGlobal(UUID templateId, UUID coachId) {
-//        QuizTemplate src = templateRepo.findById(templateId)
-//                .orElseThrow(() -> new NotFoundException("Template not found: " + templateId));
-//
-//        QuizTemplateScope scope = src.getScope() == null ? QuizTemplateScope.SYSTEM : src.getScope();
-//        if (scope != QuizTemplateScope.SYSTEM) {
-//            throw new ConflictException("Only system templates can be cloned.");
-//        }
-//
-//        // Map domain -> DTO (top-level)
-//        List<QuestionUpsertReq> qReqs = src.getQuestions().stream()
-//                .sorted(Comparator.comparing(q -> q.getId().getQuestionNo()))
-//                .map(q -> new QuestionUpsertReq(
-//                        q.getId().getQuestionNo(),
-//                        q.getQuestionText(),
-//                        q.getType(),
-//                        q.getPoints(),
-//                        q.getExplanation(),
-//                        q.getChoiceLabels().stream()
-//                                .sorted(Comparator.comparing(c -> c.getId().getLabelCode()))
-//                                .map(c -> new ChoiceUpsertReq(
-//                                        c.getId().getLabelCode(),
-//                                        c.getLabelText(),
-//                                        c.isCorrect(),
-//                                        c.getWeight()
-//                                ))
-//                                .toList()
-//                ))
-//                .toList();
-//
-//        TemplateUpsertReq req = new TemplateUpsertReq(
-//                src.getName() + " (Coach Copy)",
-//                src.getLanguageCode(),
-//                qReqs
-//        );
-//
-//        // Hàm này đã tạo template scope=COACH, owner=coachId
-//        return createCoachTemplate(req, coachId);
-//    }
+
+    @Override
+    public QuizTemplate publish(UUID templateId, UUID actorId) {
+        QuizTemplate t = templateRepo.findById(templateId).orElseThrow();
+        t.setStatus(QuizTemplateStatus.PUBLISHED);
+        t.setPublishedAt(Instant.now());
+        t.setUpdatedAt(Instant.now());
+        return templateRepo.save(t);
+    }
+
+
+    @Override
+    @Transactional
+    public QuizTemplate cloneFromGlobal(UUID templateId, UUID coachId) {
+        QuizTemplate src = templateRepo.findById(templateId)
+                .orElseThrow(() -> new NotFoundException("Template not found: " + templateId));
+
+        QuizTemplateScope scope = src.getScope() == null ? QuizTemplateScope.SYSTEM : src.getScope();
+        if (scope != QuizTemplateScope.SYSTEM) {
+            throw new ConflictException("Only system templates can be cloned.");
+        }
+
+        // Map domain -> DTO (top-level)
+        List<QuestionUpsertReq> qReqs = src.getQuestions().stream()
+                .sorted(Comparator.comparing(q -> q.getId().getQuestionNo()))
+                .map(q -> new QuestionUpsertReq(
+                        q.getId().getQuestionNo(),
+                        q.getQuestionText(),
+                        q.getType(),
+                        q.getPoints(),
+                        q.getExplanation(),
+                        q.getChoiceLabels().stream()
+                                .sorted(Comparator.comparing(c -> c.getId().getLabelCode()))
+                                .map(c -> new ChoiceUpsertReq(
+                                        c.getId().getLabelCode(),
+                                        c.getLabelText(),
+                                        c.isCorrect(),
+                                        c.getWeight()
+                                ))
+                                .toList()
+                ))
+                .toList();
+
+        TemplateUpsertReq req = new TemplateUpsertReq(
+                src.getName() + " (Coach Copy)",
+                src.getLanguageCode(),
+                qReqs
+        );
+
+        // Hàm này đã tạo template scope=COACH, owner=coachId
+        return createCoachTemplate(req, coachId);
+    }
 
 }

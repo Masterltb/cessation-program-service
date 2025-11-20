@@ -10,4 +10,5 @@ public interface EnrollmentService {
     EnrollmentRes startTrialOrPaid(UUID userId, StartEnrollmentReq req);
     List<EnrollmentRes> listByUser(UUID userId);
     void complete(UUID userId, UUID enrollmentId);
+
 }

@@ -7,7 +7,8 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration
 @Profile("dev")
-public class DevOnlyBeans {
+public class
+DevOnlyBeans {
     @Bean
     public DevAutoUserFilter devAutoUserFilter() {
         return new DevAutoUserFilter();

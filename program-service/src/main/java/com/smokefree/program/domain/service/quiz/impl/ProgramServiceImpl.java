@@ -3,6 +3,7 @@ package com.smokefree.program.domain.service.quiz.impl;
 import com.smokefree.program.domain.model.ProgramStatus;
 import com.smokefree.program.domain.model.Program;
 import com.smokefree.program.domain.repo.ProgramRepository;
+import com.smokefree.program.domain.service.ProgramCreationService;
 import com.smokefree.program.domain.service.ProgramService;
 import com.smokefree.program.web.dto.program.*;
 import com.smokefree.program.web.error.ConflictException;
@@ -18,26 +19,20 @@ import java.util.*;
 public class ProgramServiceImpl implements ProgramService {
 
     private final ProgramRepository repo;
-
-    @Override @Transactional
+    private final ProgramCreationService programCreationService;
+    @Override
+    @Transactional
     public ProgramRes createProgram(UUID ownerUserId, CreateProgramReq req, String tierHeader) {
         repo.findFirstByUserIdAndStatusAndDeletedAtIsNull(ownerUserId, ProgramStatus.ACTIVE)
                 .ifPresent(p -> { throw new ConflictException("User already has ACTIVE program"); });
 
         int planDays = (req.planDays() == null ? 30 : req.planDays());
-        Program p = Program.builder()
-                .userId(ownerUserId)
-                .planDays(planDays)
-                .status(ProgramStatus.ACTIVE)
-                .startDate(LocalDate.now(ZoneOffset.UTC))
-                .currentDay(1)
-                .entitlementTierAtCreation(tierHeader)
-                .trialStartedAt(Instant.now())
-                .trialEndExpected(Instant.now().plus(Duration.ofDays(7)))
-                .build();
 
+        // Paid program: không trial
+        Program p = programCreationService.createPaidProgram(ownerUserId, planDays, tierHeader);
         p = repo.save(p);
-        return toRes(p, "TRIALING", p.getTrialEndExpected(), tierHeader);
+
+        return toRes(p, "ACTIVE", null, tierHeader);
     }
 
     @Override

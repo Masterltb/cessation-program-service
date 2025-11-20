@@ -1,5 +1,6 @@
 package com.smokefree.program.web.controller.quiz;
 
+import com.smokefree.program.domain.model.AssignmentScope;
 import com.smokefree.program.domain.service.quiz.QuizAssignmentService;
 import com.smokefree.program.domain.service.quiz.QuizTemplateService;
 import com.smokefree.program.web.dto.quiz.assignment.AssignmentReq;
@@ -37,16 +38,16 @@ public class CoachQuizController {
         return new TemplateRes(t.getId(), t.getName(), t.getVersion(), t.getStatus().name());
     }
 
-    @PostMapping("/assignments")
+    @PostMapping("/assignments/coach")
     @PreAuthorize("hasRole('COACH')")
     public void assignForOwnPrograms(@RequestBody @Valid AssignmentReq req) {
-        UUID userId = getUserId();
+        UUID coachId = getUserId();
         assignmentService.assignToPrograms(
                 req.templateId(),
                 req.programIds(),
                 req.everyDays() == null ? 5 : req.everyDays(),
-                userId,
-                "coach"
+                coachId,
+                AssignmentScope.DAY   // hoặc WEEK/PROGRAM tuỳ rule lặp
         );
     }
 
