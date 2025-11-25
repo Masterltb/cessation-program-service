@@ -1,4 +1,5 @@
-package com.smokefree.program.web.dto.plan;
+// src/main/java/com/smokefree/program/web/dto/module/ContentModuleRes.java
+package com.smokefree.program.web.dto.module;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -10,7 +11,7 @@ public record ContentModuleRes(
         String type,
         String lang,
         Integer version,
-        Map<String,Object> payload,
+        Map<String, Object> payload,
         OffsetDateTime updatedAt,
         String etag
 ) {}

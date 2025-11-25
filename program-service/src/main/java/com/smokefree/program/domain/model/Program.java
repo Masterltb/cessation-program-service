@@ -25,10 +25,12 @@ public class Program {
 
     @Column(nullable=false)
     private LocalDate startDate;
-    @Column(nullable=false) private int currentDay = 1;
+    @Column(nullable=false)
+    private int currentDay = 1;
 
     private Integer totalScore;
-    @Enumerated(EnumType.STRING) private SeverityLevel severity;
+    @Enumerated(EnumType.STRING)
+    private SeverityLevel severity;
 
     // snapshot trial
     private String entitlementTierAtCreation;
@@ -37,8 +39,10 @@ public class Program {
 
     @Column(nullable=false)
     private Instant createdAt;
+
     @Column(nullable=false)
     private Instant updatedAt;
+
     private Instant deletedAt;
 
     @PrePersist void preInsert() {
@@ -47,7 +51,9 @@ public class Program {
         updatedAt = now;
         if (startDate == null) startDate = LocalDate.now(ZoneOffset.UTC);
     }
-    @PreUpdate void preUpdate(){ updatedAt = Instant.now(); }
+    @PreUpdate void preUpdate(){
+        updatedAt = Instant.now();
+    }
 
     @Column(name = "streak_current", nullable = false)
     private int streakCurrent = 0;

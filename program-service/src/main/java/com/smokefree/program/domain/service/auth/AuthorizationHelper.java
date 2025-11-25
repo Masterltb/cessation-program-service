@@ -8,6 +8,13 @@ import java.util.UUID;
 
 @Component("authz")
 public class AuthorizationHelper {
+    public boolean isAdmin() {
+        return SecurityUtil.hasRole("ADMIN");
+    }
+    public boolean isCoach() {
+        return SecurityUtil.hasAnyRole("ADMIN", "COACH");
+    }
+
     public boolean isAdmin(@Nullable UUID programId) {
         return SecurityUtil.hasRole("ADMIN");
     }
@@ -18,3 +25,4 @@ public class AuthorizationHelper {
         return SecurityUtil.isVip(programId);
     }
 }
+

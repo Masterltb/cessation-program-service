@@ -1,50 +1,104 @@
-// src/main/java/com/smokefree/program/web/controller/ModuleController.java
 package com.smokefree.program.web.controller;
 
 
 import com.smokefree.program.domain.service.ContentModuleService;
-import com.smokefree.program.web.dto.plan.ContentModuleRes;
+import com.smokefree.program.web.dto.module.*;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-// src/main/java/com/smokefree/program/web/controller/ModuleController.java
+import java.util.List;
+import java.util.UUID;
+
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/modules")
+@RequiredArgsConstructor
 public class ModuleController {
 
-    private final ContentModuleService service;
+    private final ContentModuleService contentModuleService;
 
-    @GetMapping("/{code}")
-    public ResponseEntity<ContentModuleRes> getLatest(@PathVariable String code,
-                                                      @RequestParam(defaultValue = "vi") String lang,
-                                                      @RequestHeader(value = "If-None-Match", required = false) String ifNoneMatch) {
-        var opt = service.getLatest(code, lang);
-        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+    // --- CRUD cơ bản cho admin/content team ---
 
-        var dto = opt.get();
-        String inm = ifNoneMatch;
-        if (inm != null) {
-            inm = inm.trim();
-            if (inm.startsWith("W/")) inm = inm.substring(2);
-            if (inm.startsWith("\"") && inm.endsWith("\"") && inm.length() >= 2) {
-                inm = inm.substring(1, inm.length() - 1);
-            }
-        }
-        if (inm != null && inm.equals(dto.etag())) {
-            return ResponseEntity.status(304).eTag(dto.etag()).build();
-        }
-        return ResponseEntity.ok().eTag(dto.etag()).body(dto);
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')") // tuỳ bạn cấu hình AuthorizationHelper
+    public ResponseEntity<ContentModuleRes> create(
+            @Valid @RequestBody ContentModuleCreateReq req
+    ) {
+        ContentModuleRes res = contentModuleService.create(req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
-    @GetMapping("/{code}/v/{version}")
-    public ResponseEntity<ContentModuleRes> getVersion(@PathVariable String code,
-                                                       @PathVariable Integer version,
-                                                       @RequestParam(defaultValue = "vi") String lang) {
-        return service.getVersion(code, lang, version)
-                .map(m -> ResponseEntity.ok().eTag(m.etag()).body(m))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ContentModuleRes> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody ContentModuleUpdateReq req
+    ) {
+        ContentModuleRes res = contentModuleService.update(id, req);
+        return ResponseEntity.ok(res);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        contentModuleService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','COACH')") // hoặc mở rộng thêm
+    public ResponseEntity<ContentModuleRes> getOne(@PathVariable UUID id) {
+        ContentModuleRes res = contentModuleService.getOne(id);
+        return ResponseEntity.ok(res);
+    }
+
+    // --- Endpoint phục vụ FE / Program / Step ---
+
+    /**
+     * Lấy module mới nhất theo code + lang.
+     * Lang có thể đọc từ header Accept-Language hoặc query param.
+     */
+    @GetMapping("/by-code/{code}")
+    public ResponseEntity<ContentModuleRes> getLatestByCode(
+            @PathVariable String code,
+            @RequestParam(name = "lang", required = false) String lang
+    ) {
+        ContentModuleRes res = contentModuleService.getLatestByCode(code, lang);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * Xem tất cả version của 1 module để debug hoặc admin xem lịch sử.
+     */
+    @GetMapping("/by-code/{code}/versions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ContentModuleRes>> listVersions(
+            @PathVariable String code,
+            @RequestParam(name = "lang", required = false) String lang
+    ) {
+        List<ContentModuleRes> list = contentModuleService.listVersions(code, lang);
+        return ResponseEntity.ok(list);
+    }
+
+    /**
+     * Search module theo code keyword, có phân trang.
+     */
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Page<ContentModuleRes>> search(
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "lang", required = false) String lang,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ContentModuleRes> result = contentModuleService.search(q, lang, pageable);
+        return ResponseEntity.ok(result);
     }
 }
-

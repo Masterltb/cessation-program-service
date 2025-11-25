@@ -8,16 +8,18 @@ import com.smokefree.program.domain.service.ContentModuleService;
 import com.smokefree.program.domain.service.quiz.SeverityRuleService;
 import com.smokefree.program.domain.service.template.PlanTemplateService;
 import com.smokefree.program.web.dto.plan.*;
+import com.smokefree.program.web.error.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import lombok.extern.slf4j.Slf4j;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PlanTemplateServiceImpl implements PlanTemplateService {
@@ -117,31 +119,38 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
         var dayDtos = grouped.entrySet().stream()
                 .map(e -> {
                     var stepDtos = e.getValue().stream().map(s -> {
-                        String type = null;
-                        PlanStepRes.ModuleBrief brief = null;
-
                         String moduleCode = s.getModuleCode();
+                        String moduleType = null;
+                        PlanStepRes.ModuleBrief moduleBrief = null;
+
                         boolean hasModule = moduleCode != null && !moduleCode.isBlank();
 
                         if (hasModule) {
-                            var opt = moduleService.getLatest(moduleCode, lang);
-                            if (opt.isPresent()) {
-                                var m = opt.get();
-                                type = m.type();
+                            try {
+                                var m = moduleService.getLatestByCode(moduleCode, lang);
+                                moduleType = m.type();
                                 if (expandModule) {
-                                    brief = new PlanStepRes.ModuleBrief(
-                                            m.version(), m.type(), m.payload(), m.etag()
+                                    moduleBrief = new PlanStepRes.ModuleBrief(
+                                            m.version(),
+                                            m.type(),
+                                            m.payload(),
+                                            m.etag()
                                     );
                                 }
+                            } catch (NotFoundException ex) {
+                                // Có thể log cảnh báo nếu cần, hoặc để trống moduleType/moduleBrief
+                                 log.warn("Module not found for code={} lang={}", moduleCode, lang, ex);
                             }
                         }
+
+
                         return new PlanStepRes(
                                 s.getSlot().format(TIME_FMT),
                                 s.getTitle(),
                                 s.getMaxMinutes(),
-                                type,
+                                moduleType,
                                 moduleCode,
-                                brief
+                                moduleBrief
                         );
                     }).toList();
 
@@ -149,8 +158,16 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
                 })
                 .toList();
 
-        return new PlanDaysRes(t.getId(), t.getCode(), t.getName(), t.getTotalDays(), dayDtos);
+        return new PlanDaysRes(
+                t.getId(),
+                t.getCode(),
+                t.getName(),
+                t.getTotalDays(),
+                dayDtos
+        );
     }
+
+
 
     @Override
     @Transactional(readOnly = true)
