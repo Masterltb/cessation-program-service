@@ -10,11 +10,13 @@ import com.smokefree.program.web.dto.step.UpdateStepStatusReq;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +30,7 @@ import java.util.UUID;
 public class StepController {
 
     private final StepAssignmentService service;
+    private final Clock clock;
 
     // --- LIST & GET ---
 
@@ -54,8 +57,23 @@ public class StepController {
         UUID userId = SecurityUtil.requireUserId();
         log.info("[Step] Get TODAY steps for program {} user {}", programId, userId);
 
-        LocalDate todayUtc = LocalDate.now(ZoneOffset.UTC);
+        LocalDate todayUtc = LocalDate.now(clock);
         return service.listByProgramAndDate(programId, todayUtc);
+    }
+
+    /**
+     * [DEBUG ONLY] Lấy step cho một ngày cụ thể được chỉ định.
+     * Endpoint này chỉ tồn tại khi ứng dụng chạy với profile 'dev'.
+     */
+    @GetMapping("/debug/by-date/{date}")
+    @PreAuthorize("isAuthenticated()")
+    @Profile("dev") // Chỉ kích hoạt endpoint này trong môi trường dev
+    public List<StepAssignment> getStepsForSpecificDate(
+            @PathVariable UUID programId,
+            @PathVariable("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        log.warn("[DEBUG] Getting steps for program {} on simulated date: {}", programId, date);
+        return service.listByProgramAndDate(programId, date);
     }
 
     // --- CREATE & MANAGE ---
@@ -78,9 +96,6 @@ public class StepController {
         service.updateStatus(userId, programId, assignmentId, req.status(), req.note());
     }
 
-    /**
-     * Skip một step.
-     */
     @PostMapping("/{id}/skip")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public StepAssignment skipStep(@PathVariable UUID programId, @PathVariable UUID id) {
@@ -90,9 +105,6 @@ public class StepController {
         return service.getOne(programId, id);
     }
 
-    /**
-     * Reschedule step (lặp lại lịch) và lưu DB.
-     */
     @PatchMapping("/{id}/reschedule")
     @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public StepAssignment rescheduleStep(@PathVariable UUID programId,

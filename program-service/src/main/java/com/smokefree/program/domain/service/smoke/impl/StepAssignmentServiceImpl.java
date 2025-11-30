@@ -26,19 +26,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * StepAssignmentServiceImpl - Quản lý step assignments cho programs
- *
- * FLOW:
- * 1. createForProgramFromTemplate() - Clone steps từ PlanTemplate → StepAssignment
- * 2. completeStep() - Mark step as COMPLETED
- * 3. getStepsForDay() - Lấy steps cho ngày cụ thể
- *
- * Key logic:
- * - Khi user start enrollment: clone tất cả steps từ template
- * - Mỗi step có dayNo (ngày trong plan)
- * - Status: PENDING → IN_PROGRESS → COMPLETED
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -48,9 +35,6 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
     private final PlanStepRepo planStepRepository;
     private final ProgramRepository programRepository;
 
-    /**
-     * FLOW 0: List all steps for program
-     */
     @Override
     @Transactional(readOnly = true)
     public List<StepAssignment> listByProgram(UUID programId) {
@@ -71,16 +55,13 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
         }
 
         long offset = ChronoUnit.DAYS.between(program.getStartDate(), date);
-        int plannedDay = (int) offset + 1; // day 1 = startDate
+        int plannedDay = (int) offset + 1;
         if (plannedDay < 1) {
             return List.of();
         }
         return stepAssignmentRepository.findByProgramIdAndPlannedDay(programId, plannedDay);
     }
 
-    /**
-     * Get single step
-     */
     @Override
     @Transactional(readOnly = true)
     public StepAssignment getOne(UUID programId, UUID id) {
@@ -90,9 +71,6 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
             .orElseThrow(() -> new NotFoundException("Step not found: " + id));
     }
 
-    /**
-     * Create single step assignment (manual)
-     */
     @Override
     @Transactional
     public StepAssignment create(UUID programId, CreateStepAssignmentReq req) {
@@ -112,9 +90,6 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
         return stepAssignmentRepository.save(assignment);
     }
 
-    /**
-     * Update step status
-     */
     @Override
     @Transactional
     public void updateStatus(UUID userId, UUID programId, UUID assignmentId, StepStatus status, String note) {
@@ -124,16 +99,49 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
         StepAssignment step = stepAssignmentRepository.findByIdAndProgramId(assignmentId, programId)
             .orElseThrow(() -> new NotFoundException("Step not found: " + assignmentId));
 
+        // Chỉ xử lý logic nếu trạng thái thực sự thay đổi và là COMPLETED
+        if (step.getStatus() == status || status != StepStatus.COMPLETED) {
+            step.setStatus(status);
+            step.setNote(note);
+            step.setUpdatedAt(Instant.now());
+            stepAssignmentRepository.save(step);
+            return;
+        }
+
         step.setStatus(status);
         step.setNote(note);
         step.setUpdatedAt(Instant.now());
-
-        if (status == StepStatus.COMPLETED) {
-            step.setCompletedAt(java.time.OffsetDateTime.now(ZoneOffset.UTC));
-            checkAndAdvanceProgramDay(programId, step.getPlannedDay());
-        }
+        step.setCompletedAt(java.time.OffsetDateTime.now(ZoneOffset.UTC));
 
         stepAssignmentRepository.save(step);
+
+        // Gọi logic kiểm tra hoàn thành và cập nhật streak
+        checkCompletionAndUpdateStreak(programId, step.getPlannedDay());
+    }
+
+    private void checkCompletionAndUpdateStreak(UUID programId, int plannedDay) {
+        // Sử dụng phương thức truy vấn mới để kiểm tra hiệu quả
+        long incompleteSteps = stepAssignmentRepository.countIncompleteStepsForDay(programId, plannedDay);
+
+        if (incompleteSteps == 0) {
+            log.info("[Streak] All steps for day {} in program {} are completed. Updating streak.", plannedDay, programId);
+
+            Program program = programRepository.findById(programId)
+                .orElseThrow(() -> new NotFoundException("Program not found while updating streak: " + programId));
+
+            // Tăng streak hiện tại và streak tốt nhất nếu cần
+            int newStreak = program.getStreakCurrent() + 1;
+            program.setStreakCurrent(newStreak);
+
+            if (newStreak > program.getStreakBest()) {
+                program.setStreakBest(newStreak);
+            }
+
+            programRepository.save(program);
+            log.info("[Streak] Successfully updated for program {}. New streak: {}", programId, newStreak);
+        } else {
+            log.debug("[Streak] Program {} still has {} incomplete steps for day {}.", programId, incompleteSteps, plannedDay);
+        }
     }
 
     @Override
@@ -158,31 +166,6 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
         return stepAssignmentRepository.save(step);
     }
 
-    private void checkAndAdvanceProgramDay(UUID programId, int completedStepDay) {
-        Program program = programRepository.findById(programId)
-                .orElseThrow(() -> new NotFoundException("Program not found: " + programId));
-
-        // Chỉ xử lý nếu step vừa hoàn thành thuộc về ngày hiện tại của program
-        if (program.getCurrentDay() != completedStepDay) {
-            program.setCurrentDay(completedStepDay);
-        }
-
-        List<StepAssignment> stepsForDay = stepAssignmentRepository.findByProgramIdAndPlannedDay(programId, completedStepDay);
-        boolean allStepsCompleted = stepsForDay.stream().allMatch(s -> s.getStatus() == StepStatus.COMPLETED);
-
-        if (allStepsCompleted) {
-            int nextDay = program.getCurrentDay() + 1;
-            if (nextDay <= program.getPlanDays()) {
-                program.setCurrentDay(nextDay);
-                programRepository.save(program);
-                log.info("[Program] Advanced to day {} for program {}", nextDay, programId);
-            }
-        }
-    }
-
-    /**
-     * Delete step
-     */
     @Override
     @Transactional
     public void delete(UUID programId, UUID id) {
@@ -195,45 +178,28 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
         stepAssignmentRepository.delete(step);
     }
 
-    /**
-     * FLOW 1: Clone steps từ PlanTemplate sang StepAssignment
-     *
-     * Logic:
-     * 1. Lấy tất cả PlanStep từ template
-     * 2. Tạo StepAssignment cho mỗi step
-     * 3. Set status = PENDING
-     * 4. Lưu vào DB
-     *
-     * @param program - Program (newly created)
-     * @param template - PlanTemplate
-     */
     @Override
     @Transactional
     public void createForProgramFromTemplate(Program program, PlanTemplate template) {
         log.info("[StepAssignment] Creating steps for program: {}, template: {}",
             program.getId(), template.getId());
 
-        // 1. Lấy tất cả steps từ template
-        // ✅ Fix: Use correct method name từ PlanStepRepo
         List<PlanStep> templateSteps = planStepRepository.findByTemplateIdOrderByDayNoAscSlotAsc(template.getId());
-
         log.debug("[StepAssignment] Found {} steps in template", templateSteps.size());
 
-        // 2. Tạo StepAssignment cho mỗi step
         int stepNo = 1;
         for (PlanStep planStep : templateSteps) {
             StepAssignment assignment = StepAssignment.builder()
                 .id(UUID.randomUUID())
                 .programId(program.getId())
-                .stepNo(stepNo++)  // Auto-increment step number
-                .plannedDay(planStep.getDayNo())  // ✅ Fix: Use dayNo (not stepNo)
+                .stepNo(stepNo++)
+                .plannedDay(planStep.getDayNo())
                 .status(StepStatus.PENDING)
                 .createdBy(program.getUserId())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
 
-            // Schedule khi nào step này sẽ available
             LocalDate startDate = program.getStartDate();
             LocalDate scheduledDate = startDate.plusDays(planStep.getDayNo() - 1);
             assignment.setScheduledAt(
@@ -241,11 +207,9 @@ public class StepAssignmentServiceImpl implements StepAssignmentService {
             );
 
             stepAssignmentRepository.save(assignment);
-
             log.debug("[StepAssignment] Created step {} for day {}",
                 assignment.getStepNo(), planStep.getDayNo());
         }
-
         log.info("[StepAssignment] Successfully created {} step assignments", templateSteps.size());
     }
 

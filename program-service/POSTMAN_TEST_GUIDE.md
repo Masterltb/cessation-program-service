@@ -1,152 +1,197 @@
-# Hướng dẫn Kiểm thử API Dịch vụ Chương trình bằng Postman
+# Hướng dẫn Kiểm thử API bằng Postman
 
-**Phiên bản:** 2.0
-**Cập nhật lần cuối:** 28-11-2025
-**Bảng mã:** UTF-8
-
-Tài liệu này hướng dẫn cách sử dụng bộ sưu tập Postman `smoke-free-complete-test.postman_collection.json` để kiểm thử các chức năng của Dịch vụ Chương trình (Program Service).
+Tài liệu này cung cấp một kịch bản kiểm thử (test flow) chi tiết, theo đúng thứ tự, mô phỏng một luồng sử dụng hoàn chỉnh cho `program-service`.
 
 ---
 
-## 1. Cài đặt Môi trường
+### **Phần A: Chuẩn bị Môi trường**
 
-### 1.1. Tạo Environment
+Trước khi bắt đầu, hãy đảm bảo bạn đã thiết lập các biến môi trường (Environment Variables) trong Postman.
 
-Tạo một môi trường mới trong Postman với tên `Program Service Dev`.
+1.  Mở Postman, chọn tab **Environments** ở thanh bên trái.
+2.  Tạo một môi trường mới (ví dụ: `Program Service - Môi trường Dev`).
+3.  Thêm các biến sau và điền giá trị tương ứng:
 
-### 1.2. Cấu hình Biến Môi trường (Environment Variables)
-
-Các biến này cho phép tái sử dụng và dễ dàng chuyển đổi giữa các môi trường khác nhau.
-
-| Biến              | Giá trị Mẫu                            | Mô tả                                                              |
-| ----------------- | -------------------------------------- | ------------------------------------------------------------------ |
-| `baseUrl`         | `http://localhost:8080`                | URL gốc của dịch vụ đang chạy local.                               |
-| `accessToken`     | `your_jwt_token_here`                  | Token xác thực (nếu có). Có thể để trống khi test nội bộ.          |
-| `userId`          | `uuid-cua-user-A`                      | UUID của một người dùng có vai trò `USER`.                          |
-| `coachId`         | `uuid-cua-coach-B`                     | UUID của một người dùng có vai trò `COACH`.                         |
-| `adminId`         | `uuid-cua-admin-C`                     | UUID của một người dùng có vai trò `ADMIN`.                         |
-| `planTemplateId`  | `uuid-cua-plan-template`               | ID của một `PlanTemplate` có sẵn trong DB để test ghi danh.        |
-| `programId`       | (Để trống)                             | Sẽ được tự động cập nhật bởi các request tạo chương trình.          |
-| `stepId`          | (Để trống)                             | Sẽ được tự động cập nhật bởi các request tạo bài học.              |
-| `moduleId`        | (Để trống)                             | Sẽ được tự động cập nhật bởi các request tạo module.               |
-| `attemptId`       | (Để trống)                             | Sẽ được tự động cập nhật bởi request "Open Quiz Attempt".          |
+| Tên Biến  | Giá trị Mẫu                               | Mô tả                                            |
+| :-------- | :---------------------------------------- | :----------------------------------------------- |
+| `baseUrl` | `http://localhost:8080`                   | URL cơ sở của môi trường API đang chạy.           |
+| `userId`  | `a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`    | UUID của một người dùng test với vai trò `CUSTOMER`. |
+| `adminId` | `a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12`    | UUID của một người dùng test với vai trò `ADMIN`.    |
+| `coachId` | `a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13`    | UUID của một người dùng test với vai trò `COACH`.    |
 
 ---
 
-## 2. Xác thực & Headers
+### **Phần B: Luồng Người dùng (Vai trò: CUSTOMER)**
 
-Hệ thống sử dụng các header để xác định người dùng và vai trò, cho phép mô phỏng các kịch bản phân quyền khác nhau.
+Kịch bản này mô phỏng một người dùng mới đăng ký, thực hiện chương trình và tương tác với các tính năng.
 
--   **Headers Bắt buộc cho mọi Request:**
-    -   `Authorization`: `Bearer {{accessToken}}` (Có thể không cần thiết khi gateway chưa tích hợp).
-    -   `X-User-Id`: `{{userId}}` (Thay đổi giá trị thành `{{coachId}}` hoặc `{{adminId}}` tùy theo vai trò cần test).
-    -   `X-User-Role`: `USER`, `COACH`, hoặc `ADMIN`.
+**Bước 1: Gửi Đánh giá Ban đầu**
+-   **Mục đích:** Người dùng mới trả lời bộ câu hỏi để hệ thống đánh giá và gợi ý lộ trình.
+-   **Hành động:** Mở thư mục `1. User-Facing APIs` -> `Onboarding`, chọn request `POST Submit Baseline Assessment` và nhấn **Send**.
+-   **Request:** `POST {{baseUrl}}/api/onboarding/baseline`
+-   **Headers:**
+    ```
+    X-User-Id: {{userId}}
+    X-User-Role: CUSTOMER
+    Content-Type: application/json
+    ```
+-   **Body:**
+    ```json
+    {
+      "answers": [
+        { "questionId": "q1", "score": 4 },
+        { "questionId": "q2", "score": 5 },
+        { "questionId": "q3", "score": 3 }
+      ]
+    }
+    ```
+-   **Kết quả mong đợi:**
+    -   Status `200 OK`.
+    -   Script test sẽ tự động lưu `recommendedTemplateId` vào biến để sử dụng sau này.
 
--   **Ví dụ Kịch bản Phân quyền:**
-    -   **Test với vai trò USER:** Đặt `X-User-Id: {{userId}}` và `X-User-Role: USER`.
-    -   **Test với vai trò ADMIN:** Đặt `X-User-Id: {{adminId}}` và `X-User-Role: ADMIN`.
-    -   **Test với vai trò COACH:** Đặt `X-User-Id: {{coachId}}` và `X-User-Role: COACH`. Lưu ý rằng chương trình đang được kiểm thử phải được gán cho coach này.
+**Bước 2: Tạo Chương trình Mới**
+-   **Mục đích:** Người dùng chọn và tạo một chương trình trả phí dựa trên số ngày.
+-   **Hành động:** Mở thư mục `1. User-Facing APIs` -> `Programs`, chọn request `POST Create Program` và nhấn **Send**.
+-   **Request:** `POST {{baseUrl}}/v1/programs`
+-   **Headers:**
+    ```
+    X-User-Id: {{userId}}
+    X-User-Role: CUSTOMER
+    Content-Type: application/json
+    ```
+-   **Body:**
+    ```json
+    {
+        "planDays": 30
+    }
+    ```
+-   **Kết quả mong đợi:**
+    -   Status `201 Created`.
+    -   Script test sẽ tự động lưu `id` của chương trình mới vào biến `programId`.
+
+**Bước 3: Xác nhận Chương trình đang hoạt động**
+-   **Mục đích:** Kiểm tra xem chương trình vừa tạo có phải là chương trình đang hoạt động của người dùng hay không.
+-   **Hành động:** Mở thư mục `1. User-Facing APIs` -> `Programs`, chọn request `GET Active Program` và nhấn **Send**.
+-   **Request:** `GET {{baseUrl}}/v1/programs/active`
+-   **Headers:**
+    ```
+    X-User-Id: {{userId}}
+    X-User-Role: CUSTOMER
+    ```
+-   **Body:** (Không có)
+-   **Kết quả mong đợi:**
+    -   Status `200 OK`.
+    -   Body trả về chứa thông tin của chương trình có ID là `{{programId}}`.
+
+**Bước 4: Xem nhiệm vụ hôm nay**
+-   **Mục đích:** Người dùng xem các nhiệm vụ cần làm trong ngày.
+-   **Hành động:** Mở thư mục `1. User-Facing APIs` -> `Program Execution`, chọn request `GET Today's Steps` và nhấn **Send**.
+-   **Request:** `GET {{baseUrl}}/api/programs/{{programId}}/steps/today`
+-   **Headers:**
+    ```
+    X-User-Id: {{userId}}
+    X-User-Role: CUSTOMER
+    ```
+-   **Body:** (Không có)
+-   **Kết quả mong đợi:**
+    -   Status `200 OK`.
+    -   Script test sẽ tự động lưu `id` của nhiệm vụ đầu tiên vào biến `stepId`.
+
+**Bước 5: Hoàn thành một nhiệm vụ**
+-   **Mục đích:** Người dùng đánh dấu một nhiệm vụ là đã hoàn thành.
+-   **Hành động:** Mở thư mục `1. User-Facing APIs` -> `Program Execution`, chọn request `PATCH Update Step Status` và nhấn **Send**.
+-   **Request:** `PATCH {{baseUrl}}/api/programs/{{programId}}/steps/{{stepId}}/status`
+-   **Headers:**
+    ```
+    X-User-Id: {{userId}}
+    X-User-Role: CUSTOMER
+    Content-Type: application/json
+    ```
+-   **Body:**
+    ```json
+    {
+        "status": "COMPLETED"
+    }
+    ```
+-   **Kết quả mong đợi:**
+    -   Status `200 OK`.
+    -   Body trả về cho thấy `status` của step đã được cập nhật.
+
+**Bước 6: Ghi lại một sự kiện hút thuốc (Slip)**
+-   **Mục đích:** Người dùng ghi lại một lần lỡ hút thuốc, điều này sẽ ảnh hưởng đến chuỗi ngày không hút.
+-   **Hành động:** Mở thư mục `1. User-Facing APIs` -> `Program Execution`, chọn request `POST Create Smoke Event` và nhấn **Send**.
+-   **Request:** `POST {{baseUrl}}/api/programs/{{programId}}/smoke-events`
+-   **Headers:**
+    ```
+    X-User-Id: {{userId}}
+    X-User-Role: CUSTOMER
+    Content-Type: application/json
+    ```
+-   **Body:**
+    ```json
+    {
+        "occurredAt": "{{$isoTimestamp}}",
+        "kind": "SLIP",
+        "trigger": "STRESS",
+        "note": "Căng thẳng vì công việc."
+    }
+    ```
+-   **Kết quả mong đợi:**
+    -   Status `201 Created`.
 
 ---
 
-## 3. Các Kịch bản Kiểm thử Chính (Test Cases)
+### **Phần C: Luồng Quản trị viên (Vai trò: ADMIN)**
 
-Dưới đây là các kịch bản kiểm thử được nhóm theo chức năng.
+Kịch bản này mô phỏng một quản trị viên tạo nội dung mới cho hệ thống.
 
-### 3.1. Onboarding & Enrollment
+**Bước 7: Tạo một Quiz mới**
+-   **Mục đích:** Admin tạo một bộ câu hỏi quiz mới cho hệ thống.
+-   **Hành động:** Mở thư mục `2. Admin-Facing APIs` -> `Content & Template Management`, chọn request `POST Create Quiz` và nhấn **Send**.
+-   **Request:** `POST {{baseUrl}}/v1/admin/quizzes`
+-   **Headers:**
+    ```
+    X-User-Id: {{adminId}}
+    X-User-Role: ADMIN
+    Content-Type: application/json
+    ```
+-   **Body:**
+    ```json
+    {
+        "name": "Quiz kiểm tra hàng tuần {{$randomInt}}",
+        "languageCode": "vi",
+        "questions": [
+            {
+                "questionNo": 1,
+                "text": "Trong tuần qua, bạn có cảm thấy căng thẳng không?",
+                "type": "SINGLE_CHOICE",
+                "choices": [
+                    { "labelCode": "A", "labelText": "Không hề" },
+                    { "labelCode": "B", "labelText": "Một chút" },
+                    { "labelCode": "C", "labelText": "Rất nhiều" }
+                ]
+            }
+        ]
+    }
+    ```
+-   **Kết quả mong đợi:**
+    -   Status `201 Created`.
+    -   Script test sẽ tự động lưu `id` của quiz mới vào biến `quizTemplateId`.
 
-| Kịch bản                               | Endpoint & Method                  | Vai trò | Body / Params                                       | Kết quả Mong muốn (Assertions)                                     |
-| --------------------------------------- | ---------------------------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------ |
-| **Gửi đánh giá ban đầu**                | `POST /api/onboarding/baseline`    | `USER` | `QuizAnswerReq` với 10 câu trả lời.                  | `200 OK`, trả về `BaselineResultRes` chứa `severity` và `recommendedTemplateId`. |
-| **Ghi danh chương trình (Dùng thử)**     | `POST /v1/programs/{{planTemplateId}}/join` | `USER` | `{"trial": true}` hoặc không có body.             | `200 OK`, trả về `EnrollmentRes` với `trialUntil` khác null.        |
-| **Ghi danh chương trình (Trả phí)**      | `POST /v1/programs/{{planTemplateId}}/join` | `USER` | `{"trial": false}`                                  | `200 OK`, trả về `EnrollmentRes` với `trialUntil` là null.          |
-| **Ghi danh khi đã có chương trình**      | `POST /v1/programs/{{planTemplateId}}/join` | `USER` | (Thực hiện sau khi đã tạo thành công một chương trình) | `409 Conflict`.                                                    |
-
-### 3.2. Programs
-
-| Kịch bản                               | Endpoint & Method                  | Vai trò | Body / Params                                       | Kết quả Mong muốn (Assertions)                                     |
-| --------------------------------------- | ---------------------------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------ |
-| **Lấy chương trình đang hoạt động**      | `GET /v1/programs/active`          | `USER` | -                                                   | `200 OK`.                                                          |
-| **Lấy chương trình khi trial hết hạn**   | `GET /v1/programs/active`          | `USER` | (Yêu cầu mock DB `trialEndExpected` < now)          | `402 Payment Required`.                                            |
-| **Lấy danh sách chương trình**           | `GET /v1/programs`                 | `USER` | -                                                   | `200 OK`, trả về một danh sách.                                     |
-| **Tạm dừng/Tiếp tục/Kết thúc**          | `POST /api/programs/{{programId}}/{action}` | `USER` | `action` là `pause`, `resume`, `end`.               | `200 OK`, trạng thái chương trình được cập nhật.                    |
-| **Gia hạn trial**                        | `POST /api/programs/{{programId}}/extend-trial` | `ADMIN`| `{"additionalDays": 7}`                           | `200 OK`, `trialEndExpected` được cập nhật.                         |
-| **Lấy tiến độ chương trình**             | `GET /api/programs/{{programId}}/progress` | `USER` | -                                                   | `200 OK`, `percentComplete` được tính đúng, `stepsCompleted` là 0. |
-
-### 3.3. Content & Plan Templates
-
-| Kịch bản                               | Endpoint & Method                  | Vai trò | Body / Params                                       | Kết quả Mong muốn (Assertions)                                     |
-| --------------------------------------- | ---------------------------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------ |
-| **Lấy danh sách mẫu kế hoạch**           | `GET /api/plan-templates`          | `USER` | -                                                   | `200 OK`.                                                          |
-| **Lấy chi tiết lịch trình (expand)**     | `GET /api/plan-templates/by-code/{code}/days` | `USER` | `expand=true`                                       | `200 OK`, `moduleBrief` trong response phải chứa `payload`.        |
-| **CRUD Module Nội dung**                | `POST`, `PUT`, `DELETE /api/modules` | `ADMIN`| Body tương ứng.                                     | `201` (POST), `200` (PUT), `204` (DELETE).                          |
-| **Thử CRUD Module với vai trò USER**    | `POST /api/modules`                | `USER` | Body bất kỳ.                                        | `403 Forbidden`.                                                   |
-
-### 3.4. Program Execution (Steps, Smoke Events, Streaks)
-
-| Kịch bản                               | Endpoint & Method                  | Vai trò | Body / Params                                       | Kết quả Mong muốn (Assertions)                                     |
-| --------------------------------------- | ---------------------------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------ |
-| **Lấy bài học hôm nay**                 | `GET /api/programs/{{programId}}/steps/today` | `USER` | -                                                   | `200 OK`.                                                          |
-| **Hoàn thành một bài học**              | `PATCH /api/programs/{{programId}}/steps/{{stepId}}/status` | `USER` | `{"status": "COMPLETED"}`                         | `200 OK`.                                                          |
-| **Coach thử hoàn thành bài học**        | `PATCH /api/programs/{{programId}}/steps/{{stepId}}/status` | `COACH`| `{"status": "COMPLETED"}`                         | `403 Forbidden`.                                                   |
-| **Ghi nhận một lần hút thuốc (Slip)**   | `POST /api/programs/{{programId}}/smoke-events` | `USER` | `{"kind": "SLIP", ...}`                           | `200 OK`. Streak của chương trình phải được reset.                  |
-| **Bắt đầu một chuỗi ngày**              | `POST /api/programs/{{programId}}/streak/start` | `USER` | -                                                   | `200 OK`, trả về `StreakView`.                                      |
-| **Coach thử phá vỡ chuỗi ngày**         | `POST /api/programs/{{programId}}/streak/break` | `COACH`| Body bất kỳ.                                        | `403 Forbidden`.                                                   |
-
-### 3.5. Quizzes
-
-| Kịch bản                               | Endpoint & Method                  | Vai trò | Body / Params                                       | Kết quả Mong muốn (Assertions)                                     |
-| --------------------------------------- | ---------------------------------- | ------ | --------------------------------------------------- | ------------------------------------------------------------------ |
-| **Admin tạo câu hỏi cho Quiz**          | `POST /v1/admin/quizzes/{{templateId}}/questions` | `ADMIN`| `AddQuestionReq`                                    | `200 OK`, trả về `questionId`.                                      |
-| **Lấy danh sách Quiz đến hạn**          | `GET /v1/me/quizzes`               | `USER` | -                                                   | `200 OK`, trả về danh sách `DueItem`.                              |
-| **Mở một bài Quiz**                     | `POST /v1/me/quizzes/{{templateId}}/open` | `USER` | -                                                   | `201 Created`, trả về `OpenAttemptRes` chứa câu hỏi.                |
-| **Mở Quiz khi trial hết hạn**           | `POST /v1/me/quizzes/{{templateId}}/open` | `USER` | (Yêu cầu mock DB `trialEndExpected` < now)          | `402 Payment Required`.                                            |
-| **Lưu và Nộp bài Quiz**                 | 1. `PUT /v1/me/quizzes/{{attemptId}}/answer` <br> 2. `POST /v1/me/quizzes/{{attemptId}}/submit` | `USER` | 1. `AnswerReq` <br> 2. -                            | `200 OK` cho cả hai. Response của Submit phải có `severity` hợp lý. |
-| **Truy cập endpoint placeholder**       | `GET /me/quiz/{{templateId}}/attempts` | `USER` | -                                                   | `501 Not Implemented`.                                             |
+**Bước 8: Xuất bản Quiz**
+-   **Mục đích:** Admin xuất bản quiz từ trạng thái `DRAFT` để người dùng có thể bắt đầu làm.
+-   **Hành động:** Mở thư mục `2. Admin-Facing APIs` -> `Content & Template Management`, chọn request `POST Publish Quiz` và nhấn **Send**.
+-   **Request:** `POST {{baseUrl}}/v1/admin/quizzes/{{quizTemplateId}}/publish`
+-   **Headers:**
+    ```
+    X-User-Id: {{adminId}}
+    X-User-Role: ADMIN
+    ```
+-   **Body:** (Không có)
+-   **Kết quả mong đợi:**
+    -   Status `200 OK`.
 
 ---
 
-## 4. Luồng Kiểm thử Phức hợp (End-to-End Flows)
-
-### 4.1. Luồng Phân quyền USER vs. COACH
-
-1.  **Vai trò USER:** Đặt header `X-User-Id: {{userId}}`, `X-User-Role: USER`.
-2.  **Thực hiện:** Gọi `POST /api/programs/{{programId}}/smoke-events` (ghi dữ liệu).
-3.  **Kiểm tra:** Mong đợi `200 OK`.
-4.  **Vai trò COACH:** Đổi header `X-User-Id: {{coachId}}`, `X-User-Role: COACH`.
-5.  **Thực hiện:** Gọi lại `POST /api/programs/{{programId}}/smoke-events` với cùng `programId`.
-6.  **Kiểm tra:** Mong đợi `403 Forbidden`.
-7.  **Thực hiện:** Gọi `GET /api/programs/{{programId}}/smoke-events/history` (đọc dữ liệu).
-8.  **Kiểm tra:** Mong đợi `200 OK`.
-
-### 4.2. Luồng Hoàn chỉnh một Bài Quiz
-
-1.  **Lấy Quiz đến hạn:** Gọi `GET /v1/me/quizzes` để lấy `templateId` của một bài quiz.
-2.  **Mở bài Quiz:** Gọi `POST /v1/me/quizzes/{{templateId}}/open`. Lưu `attemptId` từ response vào biến môi trường.
-3.  **Trả lời câu hỏi:** Lặp qua các câu hỏi trong response, gọi `PUT /v1/me/quizzes/{{attemptId}}/answer` cho mỗi câu.
-4.  **Nộp bài:** Gọi `POST /v1/me/quizzes/{{attemptId}}/submit`.
-5.  **Xác thực:** Kiểm tra response chứa `totalScore` và `severity` chính xác.
-
----
-
-## 5. Hướng dẫn Assertions & Troubleshooting
-
-### 5.1. Các Assertions Quan trọng
-
-Trong tab "Tests" của mỗi request, hãy thêm các kiểm thử JavaScript để xác thực:
-
--   **Status Code:** `pm.test("Status code is 200", () => pm.response.to.have.status(200));`
--   **Quyền truy cập:** `pm.test("Status code is 403 for forbidden access", () => pm.response.to.have.status(403));`
--   **Schema & Kiểu dữ liệu:** `pm.test("ID should be a valid UUID", () => { const res = pm.response.json(); pm.expect(res.id).to.match(/^[...]/); });`
--   **Nội dung Response:** `pm.test("Response should contain a 'severity' field", () => pm.expect(pm.response.json()).to.have.property('severity'));`
--   **Sắp xếp:** Với các endpoint lịch sử, kiểm tra xem item đầu tiên có ngày tạo mới hơn item thứ hai.
-
-### 5.2. Xử lý sự cố (Troubleshooting)
-
-| Mã lỗi | Nguyên nhân & Giải pháp                                                              |
-| ------- | ------------------------------------------------------------------------------------ |
-| `401`   | **Token sai/thiếu.** Kiểm tra biến `accessToken` và header `Authorization`.           |
-| `403`   | **Không có quyền.** Vai trò không phù hợp (ví dụ: COACH ghi dữ liệu) hoặc `programId` không thuộc `userId` đang dùng. |
-| `404`   | **Không tìm thấy.** ID trong URL (ví dụ: `{{programId}}`) không tồn tại trong DB.     |
-| `409`   | **Xung đột.** Thường do tạo tài nguyên đã tồn tại (ví dụ: tạo program khi đã có một cái `ACTIVE`). |
-| `500`   | **Lỗi Server.** Kiểm tra log của service. Thường do thiếu dữ liệu seed (template, module) hoặc lỗi kết nối DB. |
+Bằng cách thực hiện tuần tự 8 bước trên, bạn đã kiểm tra được một luồng nghiệp vụ hoàn chỉnh, bao gồm cả tương tác của người dùng và quản trị viên, đồng thời xác minh được tính liên kết giữa các API.
+```
