@@ -17,21 +17,20 @@ import java.util.UUID;
 public class QuizDetailController {
 
     @GetMapping("/{templateId}/attempts")
-    @PreAuthorize("isAuthenticated()")
+
     public List<QuizAttemptHistoryRes> getAttemptHistory(@PathVariable UUID templateId,
                                                          @RequestParam(defaultValue = "10") int size) {
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Quiz attempt history not implemented");
     }
 
     @GetMapping("/{templateId}/attempts/{attemptId}")
-    @PreAuthorize("isAuthenticated()")
+
     public QuizAttemptDetailRes getAttemptDetail(@PathVariable UUID templateId,
                                                  @PathVariable UUID attemptId) {
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Quiz attempt detail not implemented");
     }
 
     @PostMapping("/{templateId}/retry")
-    @PreAuthorize("isAuthenticated()")
     public QuizAttemptRes retryQuiz(@PathVariable UUID templateId) {
         throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED, "Quiz retry not implemented");
     }

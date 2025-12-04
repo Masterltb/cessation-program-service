@@ -12,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -40,7 +39,6 @@ public class ProgramManagementController {
      * Payment service sẽ gọi endpoint này sau khi thanh toán OK.
      */
     @PostMapping("/{id}/upgrade-from-trial")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('PAYMENT_SERVICE')")
     public ProgramRes upgradeFromTrial(
             @PathVariable UUID id
             ) {
@@ -75,7 +73,6 @@ public class ProgramManagementController {
      * Lấy trạng thái trial hiện tại.
      */
     @GetMapping("/{id}/trial-status")
-    @PreAuthorize("isAuthenticated()")
     public TrialStatusRes getTrialStatus(@PathVariable UUID id) {
         Program program = programRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Program not found: " + id));
@@ -108,7 +105,6 @@ public class ProgramManagementController {
      * Kết thúc chương trình sớm.
      */
     @PostMapping("/{id}/end")
-    @PreAuthorize("isAuthenticated()")
     public ProgramRes endProgram(@PathVariable UUID id) {
         Program program = programRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Program not found: " + id));
@@ -138,7 +134,6 @@ public class ProgramManagementController {
      * Pause chương trình (tạm dừng lộ trình).
      */
     @PostMapping("/{id}/pause")
-    @PreAuthorize("isAuthenticated()")
     public ProgramRes pauseProgram(@PathVariable UUID id) {
         Program program = programRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Program not found: " + id));
@@ -166,7 +161,6 @@ public class ProgramManagementController {
      * Resume chương trình (tiếp tục lộ trình).
      */
     @PostMapping("/{id}/resume")
-    @PreAuthorize("isAuthenticated()")
     public ProgramRes resumeProgram(@PathVariable UUID id) {
         Program program = programRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Program not found: " + id));
@@ -193,7 +187,6 @@ public class ProgramManagementController {
      * Cập nhật ngày hiện tại (chuyển sang ngày tiếp theo).
      */
     @PatchMapping("/{id}/current-day")
-    @PreAuthorize("hasRole('ADMIN')")
     public ProgramRes updateCurrentDay(
             @PathVariable UUID id,
             @RequestBody UpdateCurrentDayReq req) {
@@ -217,7 +210,6 @@ public class ProgramManagementController {
      * Extend trial thêm N ngày.
      */
     @PostMapping("/{id}/extend-trial")
-    @PreAuthorize("hasRole('ADMIN')")
     public TrialStatusRes extendTrial(
             @PathVariable UUID id,
             @RequestBody ExtendTrialReq req) {
@@ -245,7 +237,6 @@ public class ProgramManagementController {
      * Get program progress (chi tiết tiến độ).
      */
     @GetMapping("/{id}/progress")
-    @PreAuthorize("isAuthenticated()")
     public ProgramProgressRes getProgress(@PathVariable UUID id) {
         Program program = programRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Program not found: " + id));
@@ -322,7 +313,6 @@ public class ProgramManagementController {
      * [ADMIN] Lấy danh sách Program phân trang, tránh load toàn bộ.
      */
     @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')")
     public org.springframework.data.domain.Page<com.smokefree.program.web.dto.program.AdminProgramRes> listAllPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
@@ -341,4 +331,3 @@ public class ProgramManagementController {
                 ));
     }
 }
-

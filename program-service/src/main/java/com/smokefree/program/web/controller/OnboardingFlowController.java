@@ -11,7 +11,6 @@ import com.smokefree.program.web.error.NotFoundException;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,7 +33,6 @@ public class OnboardingFlowController {
     private final QuizTemplateRepository quizTemplateRepository;
 
     @PostMapping("/baseline")
-    @PreAuthorize("isAuthenticated()")
     public BaselineResultRes baseline(@RequestBody @Valid QuizAnswerReq req) {
         UUID userId = SecurityUtil.requireUserId();
         String tier = EntitlementUtil.currentTier();
@@ -45,7 +43,6 @@ public class OnboardingFlowController {
      * Lấy nội dung quiz onboarding cho user chưa có Program.
      */
     @GetMapping("/baseline/quiz")
-    @PreAuthorize("isAuthenticated()")
     @Transactional(Transactional.TxType.SUPPORTS)
     public OpenAttemptRes getBaselineQuiz() {
         var template = quizTemplateRepository.findByCode(ONBOARDING_TEMPLATE_CODE)

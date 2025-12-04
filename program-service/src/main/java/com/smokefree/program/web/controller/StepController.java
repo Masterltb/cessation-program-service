@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Clock;
@@ -35,7 +34,6 @@ public class StepController {
     // --- LIST & GET ---
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public Object list(@PathVariable UUID programId,
                        @RequestParam(name = "page", required = false) Integer page,
                        @RequestParam(name = "size", required = false) Integer size) {
@@ -47,7 +45,6 @@ public class StepController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
     public StepAssignment get(@PathVariable UUID programId, @PathVariable UUID id) {
         log.info("[Step] GET programId={}, id={}", programId, id);
         return service.getOne(programId, id);
@@ -57,7 +54,6 @@ public class StepController {
      * Lấy danh sách step của ngày hôm nay.
      */
     @GetMapping("/today")
-    @PreAuthorize("isAuthenticated()")
     public List<StepAssignment> getTodaySteps(@PathVariable UUID programId) {
         UUID userId = SecurityUtil.requireUserId();
         log.info("[Step] Get TODAY steps for program {} user {}", programId, userId);
@@ -71,7 +67,6 @@ public class StepController {
      * Endpoint này chỉ tồn tại khi ứng dụng chạy với profile 'dev'.
      */
     @GetMapping("/debug/by-date/{date}")
-    @PreAuthorize("isAuthenticated()")
     @Profile("dev") // Chỉ kích hoạt endpoint này trong môi trường dev
     public List<StepAssignment> getStepsForSpecificDate(
             @PathVariable UUID programId,
@@ -84,7 +79,6 @@ public class StepController {
     // --- CREATE & MANAGE ---
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public StepAssignment create(@PathVariable UUID programId,
                                  @RequestBody @Valid CreateStepAssignmentReq req) {
         log.info("[Step] CREATE programId={}, body={}", programId, req);
@@ -92,7 +86,6 @@ public class StepController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('CUSTOMER','ADMIN')")
     public void updateStatus(@PathVariable("programId") UUID programId,
                              @PathVariable("id") UUID assignmentId,
                              @RequestBody UpdateStepStatusReq req) {
@@ -102,7 +95,6 @@ public class StepController {
     }
 
     @PostMapping("/{id}/skip")
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public StepAssignment skipStep(@PathVariable UUID programId, @PathVariable UUID id) {
         UUID userId = SecurityUtil.requireUserId();
         log.info("[Step] SKIP step {} program {}", id, programId);
@@ -111,7 +103,6 @@ public class StepController {
     }
 
     @PatchMapping("/{id}/reschedule")
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public StepAssignment rescheduleStep(@PathVariable UUID programId,
                                          @PathVariable UUID id,
                                          @RequestBody RescheduleStepReq req) {
@@ -121,7 +112,6 @@ public class StepController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('USER','ADMIN')")
     public void delete(@PathVariable UUID programId, @PathVariable UUID id) {
         log.info("[Step] DELETE programId={}, id={}", programId, id);
         service.delete(programId, id);

@@ -15,7 +15,6 @@ public class MeController {
     private final MeService meService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
     public DashboardRes me() {
         return meService.dashboard(SecurityUtil.currentUserId());
     }

@@ -10,7 +10,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +25,7 @@ public class ModuleController {
     // --- CRUD cơ bản cho admin/content team ---
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')") // tuỳ bạn cấu hình AuthorizationHelper
+    // tuỳ bạn cấu hình AuthorizationHelper
     public ResponseEntity<ContentModuleRes> create(
             @Valid @RequestBody ContentModuleCreateReq req
     ) {
@@ -35,7 +34,6 @@ public class ModuleController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ContentModuleRes> update(
             @PathVariable UUID id,
             @Valid @RequestBody ContentModuleUpdateReq req
@@ -45,14 +43,13 @@ public class ModuleController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         contentModuleService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','COACH')") // hoặc mở rộng thêm
+    // hoặc mở rộng thêm
     public ResponseEntity<ContentModuleRes> getOne(@PathVariable UUID id) {
         ContentModuleRes res = contentModuleService.getOne(id);
         return ResponseEntity.ok(res);
@@ -77,7 +74,6 @@ public class ModuleController {
      * Xem tất cả version của 1 module để debug hoặc admin xem lịch sử.
      */
     @GetMapping("/by-code/{code}/versions")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ContentModuleRes>> listVersions(
             @PathVariable String code,
             @RequestParam(name = "lang", required = false) String lang
@@ -90,7 +86,6 @@ public class ModuleController {
      * Search module theo code keyword, có phân trang.
      */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<ContentModuleRes>> search(
             @RequestParam(name = "q", required = false) String q,
             @RequestParam(name = "lang", required = false) String lang,

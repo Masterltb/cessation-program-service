@@ -29,7 +29,7 @@ public class BadgeController {
      * Lấy danh sách huy hiệu user đã đạt được.
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+
     public List<MyBadgeRes> getMyBadges() {
         UUID userId = SecurityUtil.requireUserId();
         
@@ -54,7 +54,7 @@ public class BadgeController {
      * Lấy danh mục toàn bộ huy hiệu hệ thống (để hiển thị UI dạng lưới, ẩn/hiện).
      */
     @GetMapping("/all")
-    @PreAuthorize("isAuthenticated()")
+
     public Map<String, List<BadgeDefRes>> getAllBadges() {
         // Group by Category
         return badgeRepository.findAll().stream()

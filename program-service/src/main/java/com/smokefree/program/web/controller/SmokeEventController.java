@@ -18,7 +18,7 @@ public class SmokeEventController {
     private final SmokeEventService service;
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+
     public SmokeEventRes create(@PathVariable UUID programId,
                                 @Valid @RequestBody CreateSmokeEventReq req) {
         var e = service.create(programId, req);
