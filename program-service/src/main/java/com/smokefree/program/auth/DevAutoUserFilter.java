@@ -27,8 +27,8 @@ import java.util.stream.Stream;
  *
  * Ưu tiên lấy thông tin theo thứ tự:
  * 1) X-Claims       : JSON { "principal": "...", "roles": ["ADMIN","COACH"] | [{ "authority": "ROLE_ADMIN" }, ...] }
- * 2) X-User-Roles   : "ADMIN,COACH"; dùng kèm X-User-Id
- * 3) X-User-Role    : một role; dùng kèm X-User-Id
+ * 2) X-User-Groups  : "ADMIN,COACH"; dùng kèm X-User-Id
+ * 3) X-User-Group   : một group; dùng kèm X-User-Id
  * 4) X-User-Tier    : ADMIN | COACH | VIP | COACH_VIP | BASIC  → map sang roles
  * 5) Mặc định       : principal = 00000000-0000-0000-0000-000000000001, roles = ROLE_CUSTOMER
  *
@@ -43,8 +43,8 @@ public class DevAutoUserFilter extends OncePerRequestFilter {
     // Header keys
     private static final String H_CLAIMS       = "X-Claims";
     private static final String H_USER_ID      = "X-User-Id";
-    private static final String H_USER_ROLE    = "X-User-Role";
-    private static final String H_USER_ROLES   = "X-User-Roles";
+    private static final String H_USER_GROUP   = "X-User-Group";
+    private static final String H_USER_GROUPS  = "X-User-Groups";
     private static final String H_USER_TIER    = "X-User-Tier";
     private static final String H_DEV_OVERRIDE = "X-Dev-Override";
     private static final String H_AUTHZ        = "Authorization";
@@ -106,11 +106,11 @@ public class DevAutoUserFilter extends OncePerRequestFilter {
             }
         }
 
-        // 2) X-User-Roles + X-User-Id
+        // 2) X-User-Groups + X-User-Id
         if (roleNames.isEmpty()) {
-            String rolesCsv = req.getHeader(H_USER_ROLES);
-            if (StringUtils.hasText(rolesCsv)) {
-                roleNames = Stream.of(rolesCsv.split(","))
+            String groupsCsv = req.getHeader(H_USER_GROUPS);
+            if (StringUtils.hasText(groupsCsv)) {
+                roleNames = Stream.of(groupsCsv.split(","))
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .collect(Collectors.toCollection(ArrayList::new));
@@ -118,11 +118,11 @@ public class DevAutoUserFilter extends OncePerRequestFilter {
             }
         }
 
-        // 3) X-User-Role + X-User-Id
+        // 3) X-User-Group + X-User-Id
         if (roleNames.isEmpty()) {
-            String r = req.getHeader(H_USER_ROLE);
-            if (StringUtils.hasText(r)) {
-                roleNames.add(r.trim());
+            String g = req.getHeader(H_USER_GROUP);
+            if (StringUtils.hasText(g)) {
+                roleNames.add(g.trim());
                 principal = orDefault(principal, req.getHeader(H_USER_ID));
             }
         }

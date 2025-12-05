@@ -3,7 +3,7 @@
 ## 1. Tổng Quan Hệ Thống (System Overview)
 `program-service` là một microservice chịu trách nhiệm quản lý vòng đời cai thuốc của người dùng. Nó hoạt động như một API Server, nhận request từ Gateway/Frontend, xử lý logic nghiệp vụ và lưu trữ vào PostgreSQL.
 
-*   **Authentication:** Stateless. Tin tưởng `X-User-Id`, `X-User-Role`, `X-User-Tier` từ Header.
+*   **Authentication:** Stateless. Tin tưởng `X-User-Id`, `X-User-Group`, `X-User-Tier` từ Header.
 *   **Authorization:** Sử dụng `@PreAuthorize` và `HeaderUserContextFilter` để phân quyền.
 *   **Core Domains:** Program (Lộ trình), Quiz (Đánh giá), Step (Bài học), Tracking (Theo dõi).
 

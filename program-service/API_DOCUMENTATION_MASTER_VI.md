@@ -19,9 +19,9 @@ Mọi request API (trừ các public endpoint được ghi chú) **BẮT BUỘC*
 | Header | Giá trị mẫu | Mô tả |
 | :--- | :--- | :--- |
 | `Authorization` | `Bearer <JWT_TOKEN>` | Token xác thực từ Auth Service. |
-| `X-User-Id` | `00000000-0000-0000-0000-000000000001` | UUID định danh User. |
-| `X-User-Role` | `CUSTOMER` | Vai trò: `CUSTOMER`, `COACH`, `ADMIN`. |
-| `X-User-Tier` | `PREMIUM` | (Optional) Hạng thành viên: `BASIC`, `PREMIUM`, `VIP`. |
+| `X-User-Id` | `UUID` | ID của user đang thực hiện request. | `550e8400-e29b...` |
+| `X-User-Group` | `CUSTOMER` | Nhóm người dùng: `CUSTOMER`, `COACH`, `ADMIN`. |
+| `X-User-Tier` | `BASIC` | Hạng thành viên: `BASIC`, `PREMIUM`, `VIP`. |
 
 ### 1.3. Timezone & Format
 *   **DateTime Format:** ISO-8601 UTC (Ví dụ: `2025-12-04T15:30:00Z`).
@@ -120,7 +120,7 @@ Mọi request API (trừ các public endpoint được ghi chú) **BẮT BUỘC*
         "id": "uuid",
         "templateName": "Lộ trình 30 ngày",
         "status": "ACTIVE", // Quan trọng: Check ACTIVE/PAUSED/COMPLETED
-        "currentDay": 5,
+        "currentDay": 5, // (Lưu ý: Server tự động tính toán dựa trên ngày bắt đầu, Frontend không cần tự tính)
         "planDays": 30,
         "isTrial": true,
         "trialRemainingDays": 2
@@ -147,7 +147,8 @@ Mọi request API (trừ các public endpoint được ghi chú) **BẮT BUỘC*
 
 ### 5.1. Lấy bài tập hôm nay
 *   **Endpoint:** `GET /api/programs/{programId}/steps/today`
-*   **Mô tả:** Lấy danh sách nhiệm vụ cần làm trong ngày theo giờ Server UTC.
+*   **Mô tả:** Lấy danh sách nhiệm vụ cần làm trong ngày.
+*   **Lưu ý quan trọng:** Hệ thống tính "Ngày hôm nay" theo giờ **Server (UTC)**. Frontend không cần gửi ngày lên, nhưng cần biết để giải thích cho user nếu thấy bài tập mới xuất hiện lệch múi giờ.
 *   **Response:** Array `StepAssignment`.
     ```json
     [
@@ -254,7 +255,8 @@ Mọi request API (trừ các public endpoint được ghi chú) **BẮT BUỘC*
 *   **Plan Template:** `POST /v1/admin/plan-templates`
 *   **Content Module:** `POST /api/modules`
 *   **List Programs:** `GET /api/programs/admin` (Phân trang)
-*   **Dev Tool:** `PATCH /api/programs/{id}/current-day` (Chỉnh ngày để test logic huy hiệu/lộ trình).
+*   **Dev Tool (Time Travel):** `PATCH /api/programs/{id}/current-day` (Chỉnh ngày hiện tại).
+*   **Dev Tool (View Steps):** `GET /api/programs/{id}/steps/debug/by-date/{date}` (Xem bài tập ngày bất kỳ - Chỉ môi trường Dev).
 
 ---
 

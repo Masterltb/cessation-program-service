@@ -23,7 +23,7 @@ import java.util.UUID;
  * <p>
  * Expected Headers (from Upstream Gateway):
  * - X-User-Id: UUID of the authenticated user.
- * - X-User-Role: User role (ADMIN, COACH, CUSTOMER). Mapped to "ROLE_{ROLE}".
+ * - X-User-Group: User group (ADMIN, COACH, CUSTOMER). Mapped to "ROLE_{GROUP}".
  * - X-User-Tier: (Optional) Subscription tier (BASIC, PREMIUM, VIP). Mapped to "TIER_{TIER}".
  * </p>
  * This filter constructs the {@link org.springframework.security.core.Authentication} object
@@ -51,19 +51,19 @@ public class HeaderUserContextFilter extends OncePerRequestFilter {
 
         // Đọc các header
         String uid = req.getHeader("X-User-Id");
-        String role = req.getHeader("X-User-Role");
+        String group = req.getHeader("X-User-Group");
         String tier = req.getHeader("X-User-Tier"); // <-- Đọc thêm header tier
 
         boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
 
         // Thiếu header vai trò chính
-        if (uid == null || uid.isBlank() || role == null || role.isBlank()) {
+        if (uid == null || uid.isBlank() || group == null || group.isBlank()) {
             if (isDev) { // dev thì cho qua
                 chain.doFilter(req, res);
                 return;
             }
             // Trả lỗi nếu không phải dev
-            sendUnauthorizedResponse(res, "Missing or invalid X-User-Id / X-User-Role");
+            sendUnauthorizedResponse(res, "Missing or invalid X-User-Id / X-User-Group");
             return;
         }
 
@@ -74,11 +74,11 @@ public class HeaderUserContextFilter extends OncePerRequestFilter {
             // *** LOGIC NÂNG CẤP BẮT ĐẦU TỪ ĐÂY ***
             List<GrantedAuthority> authorities = new ArrayList<>();
 
-            // 1. Thêm vai trò chính (ROLE_)
-            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.trim().toUpperCase()));
+            // 1. Thêm vai trò chính (ROLE_) - Map Group -> Role Authority
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + group.trim().toUpperCase()));
 
             // 2. Nếu là CUSTOMER và có tier, thêm quyền tier (TIER_)
-            if ("CUSTOMER".equalsIgnoreCase(role.trim()) && tier != null && !tier.isBlank()) {
+            if ("CUSTOMER".equalsIgnoreCase(group.trim()) && tier != null && !tier.isBlank()) {
                 authorities.add(new SimpleGrantedAuthority("TIER_" + tier.trim().toUpperCase()));
             }
             // *** KẾT THÚC LOGIC NÂNG CẤP ***

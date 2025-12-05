@@ -19,7 +19,7 @@ All requests (except `Health Check`) **MUST** include the following headers to i
 | :--- | :---: | :--- | :--- |
 | `Authorization` | ✅ | JWT Token (from Auth Service) | `Bearer eyJhbGci...` |
 | `X-User-Id` | ✅ | UUID of the logged-in user | `a1b2c3d4-e5f6-...` |
-| `X-User-Role` | ✅ | `CUSTOMER`, `COACH`, `ADMIN` | `CUSTOMER` |
+| `X-User-Group` | ✅ | `CUSTOMER`, `COACH`, `ADMIN` | `CUSTOMER` |
 | `X-User-Tier` | ⬜ | `BASIC`, `PREMIUM`, `VIP` (Default: BASIC) | `PREMIUM` |
 
 ### 1.3. Timezone Handling

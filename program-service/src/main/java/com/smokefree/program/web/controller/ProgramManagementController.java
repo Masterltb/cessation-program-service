@@ -175,10 +175,20 @@ public class ProgramManagementController {
             throw new ConflictException("Program is not paused");
         }
 
+        // FIX: Điều chỉnh startDate để bù trừ thời gian đã Pause.
+        // Logic: Đặt lại startDate sao cho (Hôm nay - startDate) chính bằng (currentDay - 1).
+        // Tức là: startDate = Hôm nay - (currentDay - 1) ngày.
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate newStartDate = today.minusDays(program.getCurrentDay() - 1);
+        
+        program.setStartDate(newStartDate);
         program.setStatus(ProgramStatus.ACTIVE);
+        // program.setHasPaused(true); // Giữ nguyên cờ này để biết đã từng pause
+        
         program = programRepository.save(program);
 
-        log.info("[Program] User {} resumed program. Program: {}", userId, id);
+        log.info("[Program] User {} resumed program {}. Adjusted startDate to {} to maintain currentDay {}", 
+                userId, id, newStartDate, program.getCurrentDay());
 
         return toRes(program, null, null, null);
     }

@@ -27,10 +27,10 @@ public class MeQuizController {
     @GetMapping
     public ResponseEntity<Map<String, Object>> listDueQuizzes(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader(value = "X-User-Role", required = false) String userRole,
+            @RequestHeader(value = "X-User-Group", required = false) String userGroup,
             @RequestHeader(value = "X-User-Tier", required = false) String userTier) {
 
-        log.info("[MeQuiz] listDueQuizzes - userId: {}, role: {}", userId, userRole);
+        log.info("[MeQuiz] listDueQuizzes - userId: {}, group: {}", userId, userGroup);
 
         try {
             List<DueItem> dueItems = quizFlowService.listDue(userId);
@@ -51,7 +51,7 @@ public class MeQuizController {
     public ResponseEntity<Map<String, Object>> openAttempt(
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable UUID templateId,
-            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+            @RequestHeader(value = "X-User-Group", required = false) String userGroup) {
 
         log.info("[MeQuiz] openAttempt - userId: {}, templateId: {}", userId, templateId);
 

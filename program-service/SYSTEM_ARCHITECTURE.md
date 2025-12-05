@@ -4,7 +4,7 @@
 
 ## 1. Tổng Quan Kiến Trúc (High-Level Architecture)
 
-Hệ thống được xây dựng theo kiến trúc microservice. Một **API Gateway** đóng vai trò là cửa ngõ duy nhất cho mọi yêu cầu từ client. Việc xác thực được xử lý bởi một **Authentication Service** (AWS Lambda), dịch vụ này sẽ làm giàu request bằng các header (`X-User-Id`, `X-User-Role`, `X-User-Tier`) trước khi chuyển tiếp đến các service nội bộ.
+Hệ thống được xây dựng theo kiến trúc microservice. Một **API Gateway** đóng vai trò là cửa ngõ duy nhất cho mọi yêu cầu từ client. Việc xác thực được xử lý bởi một **Authentication Service** (AWS Lambda), dịch vụ này sẽ làm giàu request bằng các header (`X-User-Id`, `X-User-Group`, `X-User-Tier`) trước khi chuyển tiếp đến các service nội bộ.
 
 ```mermaid
 graph TD

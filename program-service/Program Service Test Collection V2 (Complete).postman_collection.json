@@ -42,7 +42,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -101,7 +101,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -138,7 +138,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -167,7 +167,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -217,7 +217,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -248,7 +248,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -289,7 +289,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -328,7 +328,7 @@
 										"value": "{{userId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "CUSTOMER"
 									}
 								],
@@ -485,7 +485,7 @@
 										"value": "{{adminId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "ADMIN"
 									}
 								],
@@ -515,7 +515,7 @@
 										"value": "{{adminId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "ADMIN"
 									}
 								],
@@ -559,7 +559,7 @@
 										"value": "{{adminId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "ADMIN"
 									}
 								],
@@ -587,7 +587,7 @@
 										"value": "{{adminId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "ADMIN"
 									}
 								],
@@ -639,7 +639,7 @@
 										"value": "{{adminId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "ADMIN"
 									}
 								],
@@ -677,7 +677,7 @@
 										"value": "{{adminId}}"
 									},
 									{
-										"key": "X-User-Role",
+										"key": "X-User-Group",
 										"value": "ADMIN"
 									}
 								],
@@ -715,7 +715,7 @@
 								"value": "{{userId}}"
 							},
 							{
-								"key": "X-User-Role",
+								"key": "X-User-Group",
 								"value": "CUSTOMER"
 							},
 							{

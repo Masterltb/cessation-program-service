@@ -23,7 +23,7 @@ Set these variables in your Postman Environment:
 This service uses header-based authentication. **Every request** must include:
 
 *   `X-User-Id`: `{{userId}}` (or `{{adminId}}` for admin routes)
-*   `X-User-Role`: `CUSTOMER` (or `ADMIN`, `COACH`)
+*   `X-User-Group`: `CUSTOMER` (or `ADMIN`, `COACH`)
 *   `X-User-Tier`: `BASIC` (or `PREMIUM`, `VIP`) - *Optional but recommended*
 
 ---
@@ -35,24 +35,24 @@ This service uses header-based authentication. **Every request** must include:
 *   **Actions:**
     1.  **Create Onboarding Quiz:** (If not already exists).
         *   **Method:** `POST`, **URL:** `{{baseUrl}}/v1/admin/quizzes`
-        *   **Headers:** `X-User-Id: {{adminId}}`, `X-User-Role: ADMIN`
+        *   **Headers:** `X-User-Id: {{adminId}}`, `X-User-Group: ADMIN`
         *   **Body:** (Use a simple question set)
         *   **Save:** `id` from response as `{{onboardingTemplateId}}`.
     2.  **Create Weekly Check-in Quiz:** (For Quiz Badges)
         *   **Method:** `POST`, **URL:** `{{baseUrl}}/v1/admin/quizzes`
-        *   **Headers:** `X-User-Id: {{adminId}}`, `X-User-Role: ADMIN`
+        *   **Headers:** `X-User-Id: {{adminId}}`, `X-User-Group: ADMIN`
         *   **Body:** (Use questions that can result in LOW, MODERATE, HIGH severity)
         *   **Save:** `id` from response as `{{weeklyQuizTemplateId}}`.
     3.  **Create Plan Template:** (If needed, or use existing one).
         *   **Method:** `POST`, **URL:** `{{baseUrl}}/v1/admin/plan-templates`
-        *   **Headers:** `X-User-Id: {{adminId}}`, `X-User-Role: ADMIN`
+        *   **Headers:** `X-User-Id: {{adminId}}`, `X-User-Group: ADMIN`
         *   **Body:** (Define a 30-day plan with `planQuizSchedules` for `{{weeklyQuizTemplateId}}` at `startOffsetDay=7`, `everyDays=7`)
         *   **Save:** `id` from response as `{{planTemplateId}}`.
 
 ### Step 2: User Takes Baseline Quiz
 *   **Method:** `POST`
 *   **URL:** `{{baseUrl}}/api/onboarding/baseline`
-*   **Headers:** `X-User-Id: {{userId}}`, `X-User-Role: CUSTOMER`
+*   **Headers:** `X-User-Id: {{userId}}`, `X-User-Group: CUSTOMER`
 *   **Body:** (Use `{{onboardingTemplateId}}` and sample answers)
 *   **Verify:** Response contains `recommendedTemplateId`. Save this as `{{planTemplateId}}`.
 
