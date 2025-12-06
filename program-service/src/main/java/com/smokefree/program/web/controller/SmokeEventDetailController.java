@@ -25,7 +25,8 @@ public class SmokeEventDetailController {
     /**
      * Lịch sử các lần hút.
      */
-
+    @GetMapping("/history")
+    @PreAuthorize("isAuthenticated()")
     public List<SmokeEventRes> getHistory(
             @PathVariable UUID programId,
             @RequestParam(defaultValue = "20") int size) {
