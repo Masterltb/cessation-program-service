@@ -85,7 +85,7 @@ public class StepController {
         return service.create(programId, req);
     }
 
-    @PatchMapping("/{id}/status")
+    @PutMapping("/{id}/status")
     public void updateStatus(@PathVariable("programId") UUID programId,
                              @PathVariable("id") UUID assignmentId,
                              @RequestBody UpdateStepStatusReq req) {
