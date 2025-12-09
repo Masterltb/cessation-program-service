@@ -19,8 +19,8 @@ CREATE OR REPLACE FUNCTION program.add_step(
 ) RETURNS void
 LANGUAGE plpgsql AS $fn$
 BEGIN
-  INSERT INTO program.plan_steps(id, template_id, day_no, slot, title, details, max_minutes)
-  VALUES (gen_random_uuid(), tid, d, (hhmm)::time, t, det, mm)
+  INSERT INTO program.plan_steps(id, template_id, day_no, slot, title, details, max_minutes, created_at)
+  VALUES (gen_random_uuid(), tid, d, (hhmm)::time, t, det, mm, now())
   ON CONFLICT DO NOTHING; -- Make it safe to re-run
 END
 $fn$;
@@ -32,11 +32,11 @@ DECLARE
   l3 uuid := '33333333-3333-3333-3333-333333333333'; -- L3: Tự Do (60d)
 BEGIN
   -- Insert the 3 main plan templates.
-  INSERT INTO program.plan_templates(id, level, code, name, total_days)
+  INSERT INTO program.plan_templates(id, level, code, name, total_days, created_at)
   VALUES
-    (l1, 1, 'L1_30D', 'THỨC TỈNH (30 ngày)', 30),
-    (l2, 2, 'L2_45D', 'THAY ĐỔI (45 ngày)', 45),
-    (l3, 3, 'L3_60D', 'TỰ DO (60 ngày)', 60)
+    (l1, 1, 'L1_30D', 'THỨC TỈNH (30 ngày)', 30, now()),
+    (l2, 2, 'L2_45D', 'THAY ĐỔI (45 ngày)', 45, now()),
+    (l3, 3, 'L3_60D', 'TỰ DO (60 ngày)', 60, now())
   ON CONFLICT (id) DO NOTHING;
 
   -- Seeding all steps for Level 1, 2, 3
@@ -230,8 +230,8 @@ DECLARE rid uuid;
 BEGIN
   SELECT id INTO rid FROM program.content_modules WHERE code=p_code AND lang=p_lang AND version=p_version;
   IF rid IS NOT NULL THEN RETURN rid; END IF;
-  INSERT INTO program.content_modules(id, code, type, lang, version, payload, updated_at)
-  VALUES (gen_random_uuid(), p_code, p_type, p_lang, p_version, p_payload, now())
+  INSERT INTO program.content_modules(id, code, type, lang, version, payload, updated_at, created_at)
+  VALUES (gen_random_uuid(), p_code, p_type, p_lang, p_version, p_payload, now(), now())
   RETURNING id INTO rid;
   RETURN rid;
 END $$;
@@ -304,19 +304,19 @@ INSERT INTO program.streak_recovery_configs (attempt_order, module_code) VALUES
 -- Source: V40__create_badge_system.sql
 -- --------------------------------------------------------------------
 
-INSERT INTO program.badges (id, code, category, level, name, description, icon_url) VALUES
+INSERT INTO program.badges (id, code, category, level, name, description, icon_url, created_at) VALUES
 -- Program Badges
-('11111111-1111-1111-1111-111111111111', 'PROG_LV1', 'PROGRAM', 1, 'Khởi Hành', 'Bắt đầu hành trình cai thuốc lá.', 'assets/badges/prog_lv1.png'),
-('11111111-1111-1111-1111-111111111112', 'PROG_LV2', 'PROGRAM', 2, 'Kiên Trì', 'Đi được một nửa chặng đường mà không tạm dừng.', 'assets/badges/prog_lv2.png'),
-('11111111-1111-1111-1111-111111111113', 'PROG_LV3', 'PROGRAM', 3, 'Về Đích', 'Hoàn thành toàn bộ lộ trình cai thuốc.', 'assets/badges/prog_lv3.png'),
+('11111111-1111-1111-1111-111111111111', 'PROG_LV1', 'PROGRAM', 1, 'Khởi Hành', 'Bắt đầu hành trình cai thuốc lá.', 'assets/badges/prog_lv1.png', now()),
+('11111111-1111-1111-1111-111111111112', 'PROG_LV2', 'PROGRAM', 2, 'Kiên Trì', 'Đi được một nửa chặng đường mà không tạm dừng.', 'assets/badges/prog_lv2.png', now()),
+('11111111-1111-1111-1111-111111111113', 'PROG_LV3', 'PROGRAM', 3, 'Về Đích', 'Hoàn thành toàn bộ lộ trình cai thuốc.', 'assets/badges/prog_lv3.png', now()),
 -- Streak Badges
-('22222222-2222-2222-2222-222222222221', 'STREAK_LV1', 'STREAK', 1, 'Tuần Lễ Vàng', 'Đạt chuỗi 7 ngày không hút thuốc.', 'assets/badges/streak_lv1.png'),
-('22222222-2222-2222-2222-222222222222', 'STREAK_LV2', 'STREAK', 2, 'Thói Quen Mới', 'Đạt chuỗi ngày bằng một nửa lộ trình.', 'assets/badges/streak_lv2.png'),
-('22222222-2222-2222-2222-222222222223', 'STREAK_LV3', 'STREAK', 3, 'Chiến Binh Tự Do', 'Giữ vững chuỗi không hút thuốc suốt cả lộ trình.', 'assets/badges/streak_lv3.png'),
+('22222222-2222-2222-2222-222222222221', 'STREAK_LV1', 'STREAK', 1, 'Tuần Lễ Vàng', 'Đạt chuỗi 7 ngày không hút thuốc.', 'assets/badges/streak_lv1.png', now()),
+('22222222-2222-2222-2222-222222222222', 'STREAK_LV2', 'STREAK', 2, 'Thói Quen Mới', 'Đạt chuỗi ngày bằng một nửa lộ trình.', 'assets/badges/streak_lv2.png', now()),
+('22222222-2222-2222-2222-222222222223', 'STREAK_LV3', 'STREAK', 3, 'Chiến Binh Tự Do', 'Giữ vững chuỗi không hút thuốc suốt cả lộ trình.', 'assets/badges/streak_lv3.png', now()),
 -- Quiz Badges
-('33333333-3333-3333-3333-333333333331', 'QUIZ_LV1', 'QUIZ', 1, 'Tự Nhận Thức', 'Hoàn thành bài kiểm tra định kỳ đầu tiên.', 'assets/badges/quiz_lv1.png'),
-('33333333-3333-3333-3333-333333333332', 'QUIZ_LV2', 'QUIZ', 2, 'Tiến Triển Tốt', 'Có kết quả kiểm tra cải thiện hoặc ổn định 2 lần liên tiếp.', 'assets/badges/quiz_lv2.png'),
-('33333333-3333-3333-3333-333333333333', 'QUIZ_LV3', 'QUIZ', 3, 'Làm Chủ', 'Hoàn thành tất cả bài kiểm tra với mức độ phụ thuộc thấp.', 'assets/badges/quiz_lv3.png')
+('33333333-3333-3333-3333-333333333331', 'QUIZ_LV1', 'QUIZ', 1, 'Tự Nhận Thức', 'Hoàn thành bài kiểm tra định kỳ đầu tiên.', 'assets/badges/quiz_lv1.png', now()),
+('33333333-3333-3333-3333-333333333332', 'QUIZ_LV2', 'QUIZ', 2, 'Tiến Triển Tốt', 'Có kết quả kiểm tra cải thiện hoặc ổn định 2 lần liên tiếp.', 'assets/badges/quiz_lv2.png', now()),
+('33333333-3333-3333-3333-333333333333', 'QUIZ_LV3', 'QUIZ', 3, 'Làm Chủ', 'Hoàn thành tất cả bài kiểm tra với mức độ phụ thuộc thấp.', 'assets/badges/quiz_lv3.png', now())
 ON CONFLICT (id) DO NOTHING;
 
 
@@ -335,11 +335,11 @@ DECLARE
 BEGIN
 
     -- Step 1: Insert the main Quiz Template record
-    -- This quiz is identified by the unique code 'BASELINE_ASSESSMENT_V1'
+    -- This quiz is identified by the unique code 'ONBOARDING_ASSESSMENT'
     INSERT INTO program.quiz_templates (id, code, name, version, status, scope, language_code, created_at, updated_at)
     VALUES (
         quiz_template_uuid,
-        'BASELINE_ASSESSMENT_V1',
+        'ONBOARDING_ASSESSMENT',
         'Đánh giá Mức độ Lệ thuộc Nicotine',
         1,
         'PUBLISHED', -- Must be PUBLISHED to be usable by the system
@@ -464,5 +464,121 @@ BEGIN
         (quiz_template_uuid, 10, '4', '4-6 lần', 4, false),
         (quiz_template_uuid, 10, '5', '> 6 lần', 5, false)
     ON CONFLICT (template_id, question_no, label_code) DO NOTHING;
+
+END $$;
+
+-- ====================================================================
+-- Part 6: Missing Recovery Quizzes (CRITICAL FIX)
+-- These templates are required by the Streak Recovery Configs defined in Part 3.
+-- Code: RECOVERY_QUIZ_1, RECOVERY_QUIZ_2, RECOVERY_QUIZ_3
+-- ====================================================================
+DO $$
+DECLARE
+    rec_tpl_1 UUID := gen_random_uuid();
+    rec_tpl_2 UUID := gen_random_uuid();
+    rec_tpl_3 UUID := gen_random_uuid();
+BEGIN
+    -- 1. Recovery Quiz 1 (Nhận diện nguyên nhân)
+    INSERT INTO program.quiz_templates (id, code, name, version, status, scope, language_code, created_at, updated_at)
+    VALUES (rec_tpl_1, 'RECOVERY_QUIZ_1', 'Phục hồi: Nhận diện nguyên nhân', 1, 'PUBLISHED', 'SYSTEM', 'vi', now(), now())
+    ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name, version = EXCLUDED.version, status = EXCLUDED.status, scope = EXCLUDED.scope, language_code = EXCLUDED.language_code, published_at = EXCLUDED.published_at, updated_at = EXCLUDED.updated_at;
+
+    INSERT INTO program.quiz_template_questions (template_id, question_no, question_text, type)
+    VALUES (rec_tpl_1, 1, 'Nguyên nhân chính khiến bạn hút lại điếu vừa rồi là gì?', 'SINGLE_CHOICE')
+    ON CONFLICT (template_id, question_no) DO UPDATE SET question_text = EXCLUDED.question_text, type = EXCLUDED.type;
+
+    INSERT INTO program.quiz_choice_labels (template_id, question_no, label_code, label_text, weight, is_correct)
+    VALUES
+        (rec_tpl_1, 1, 'A', 'Căng thẳng/Stress', 0, true),
+        (rec_tpl_1, 1, 'B', 'Vui vẻ/Tiệc tùng', 0, true),
+        (rec_tpl_1, 1, 'C', 'Buồn chán', 0, true),
+        (rec_tpl_1, 1, 'D', 'Thói quen vô thức', 0, true)
+    ON CONFLICT (template_id, question_no, label_code) DO UPDATE SET label_text = EXCLUDED.label_text, weight = EXCLUDED.weight, is_correct = EXCLUDED.is_correct;
+
+    -- 2. Recovery Quiz 2 (Cam kết lại)
+    INSERT INTO program.quiz_templates (id, code, name, version, status, scope, language_code, created_at, updated_at)
+    VALUES (rec_tpl_2, 'RECOVERY_QUIZ_2', 'Phục hồi: Củng cố cam kết', 1, 'PUBLISHED', 'SYSTEM', 'vi', now(), now())
+    ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name, version = EXCLUDED.version, status = EXCLUDED.status, scope = EXCLUDED.scope, language_code = EXCLUDED.language_code, published_at = EXCLUDED.published_at, updated_at = EXCLUDED.updated_at;
+
+    INSERT INTO program.quiz_template_questions (template_id, question_no, question_text, type)
+    VALUES (rec_tpl_2, 1, 'Bạn sẽ làm gì khác đi nếu gặp lại tình huống đó?', 'SINGLE_CHOICE')
+    ON CONFLICT (template_id, question_no) DO UPDATE SET question_text = EXCLUDED.question_text, type = EXCLUDED.type;
+
+    INSERT INTO program.quiz_choice_labels (template_id, question_no, label_code, label_text, weight, is_correct)
+    VALUES
+        (rec_tpl_2, 1, 'A', 'Tránh xa tình huống đó', 0, true),
+        (rec_tpl_2, 1, 'B', 'Mang theo kẹo/nước thay thế', 0, true),
+        (rec_tpl_2, 1, 'C', 'Gọi người hỗ trợ', 0, true)
+    ON CONFLICT (template_id, question_no, label_code) DO UPDATE SET label_text = EXCLUDED.label_text, weight = EXCLUDED.weight, is_correct = EXCLUDED.is_correct;
+
+    -- 3. Recovery Quiz 3 (Kế hoạch hành động)
+    INSERT INTO program.quiz_templates (id, code, name, version, status, scope, language_code, created_at, updated_at)
+    VALUES (rec_tpl_3, 'RECOVERY_QUIZ_3', 'Phục hồi: Kế hoạch hành động', 1, 'PUBLISHED', 'SYSTEM', 'vi', now(), now())
+    ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name, version = EXCLUDED.version, status = EXCLUDED.status, scope = EXCLUDED.scope, language_code = EXCLUDED.language_code, published_at = EXCLUDED.published_at, updated_at = EXCLUDED.updated_at;
+
+    INSERT INTO program.quiz_template_questions (template_id, question_no, question_text, type)
+    VALUES (rec_tpl_3, 1, 'Mức độ tự tin của bạn để quay lại chuỗi ngay bây giờ?', 'SINGLE_CHOICE')
+    ON CONFLICT (template_id, question_no) DO UPDATE SET question_text = EXCLUDED.question_text, type = EXCLUDED.type;
+
+    INSERT INTO program.quiz_choice_labels (template_id, question_no, label_code, label_text, weight, is_correct)
+    VALUES
+        (rec_tpl_3, 1, 'A', 'Rất tự tin (100%)', 0, true),
+        (rec_tpl_3, 1, 'B', 'Khá tự tin (70-90%)', 0, true),
+        (rec_tpl_3, 1, 'C', 'Cần thêm hỗ trợ', 0, true)
+    ON CONFLICT (template_id, question_no, label_code) DO UPDATE SET label_text = EXCLUDED.label_text, weight = EXCLUDED.weight, is_correct = EXCLUDED.is_correct;
+END $$;
+-- ====================================================================
+-- Part 7: Seed Weekly Quiz Schedules (REQUIRED FOR WEEKLY CHECK-INS)
+-- Logic: Assign 'WEEKLY_ASSESSMENT' starting day 7, repeating every 7 days.
+-- ====================================================================
+DO $$
+DECLARE
+    -- Lấy ID của các Plan Template đã seed ở Part 1
+    l1_id UUID := '11111111-1111-1111-1111-111111111111'; -- L1 (30 ngày)
+    l2_id UUID := '22222222-2222-2222-2222-222222222222'; -- L2 (45 ngày)
+    l3_id UUID := '33333333-3333-3333-3333-333333333333'; -- L3 (60 ngày)
+
+    -- Tạo hoặc lấy ID cho Quiz Template đánh giá tuần
+    weekly_quiz_id UUID := gen_random_uuid();
+BEGIN
+    -- 1. Tạo Quiz Template cho bài đánh giá tuần (nếu chưa có)
+    INSERT INTO program.quiz_templates (id, code, name, version, status, scope, language_code, created_at, updated_at)
+    VALUES (weekly_quiz_id, 'WEEKLY_ASSESSMENT', 'Đánh giá tiến độ hàng tuần', 1, 'PUBLISHED', 'SYSTEM', 'vi', now(), now())
+    ON CONFLICT (id) DO UPDATE SET code = EXCLUDED.code, name = EXCLUDED.name, version = EXCLUDED.version, status = EXCLUDED.status, scope = EXCLUDED.scope, language_code = EXCLUDED.language_code, published_at = EXCLUDED.published_at, updated_at = EXCLUDED.updated_at RETURNING id INTO weekly_quiz_id;
+
+    -- THÊM CÁC CÂU HỎI VÀ LỰA CHỌN CHO WEEKLY_ASSESSMENT TẠI ĐÂY
+    -- Ví dụ:
+    INSERT INTO program.quiz_template_questions (template_id, question_no, question_text, type) VALUES
+    (weekly_quiz_id, 1, 'Mức độ thèm thuốc trung bình của bạn trong tuần qua là bao nhiêu? (0-Không thèm, 10-Cực kỳ thèm)', 'SINGLE_CHOICE'),
+    (weekly_quiz_id, 2, 'Bạn có gặp tình huống khó khăn nào trong việc tránh hút thuốc không?', 'SINGLE_CHOICE'), -- Changed from TEXT_INPUT
+    (weekly_quiz_id, 3, 'Bạn cảm thấy tự tin bao nhiêu về khả năng duy trì chuỗi không hút thuốc trong tuần tới? (0-Không tự tin, 10-Rất tự tin)', 'SINGLE_CHOICE');
+
+    INSERT INTO program.quiz_choice_labels (template_id, question_no, label_code, label_text, weight, is_correct) VALUES
+    (weekly_quiz_id, 1, '1', '0-2', 0, false),
+    (weekly_quiz_id, 1, '2', '3-5', 0, false),
+    (weekly_quiz_id, 1, '3', '6-8', 0, false),
+    (weekly_quiz_id, 1, '4', '9-10', 0, false),
+    (weekly_quiz_id, 2, '1', 'Có', 0, false), -- Placeholder choice for original TEXT_INPUT question
+    (weekly_quiz_id, 2, '2', 'Không', 0, false), -- Placeholder choice
+    (weekly_quiz_id, 3, '1', '0-4', 0, false),
+    (weekly_quiz_id, 3, '2', '5-7', 0, false),
+    (weekly_quiz_id, 3, '3', '8-10', 0, false);
+
+
+    -- 2. Cấu hình Lịch (Schedule) cho Level 1 (30 ngày)
+    -- Bắt đầu ngày 7, lặp lại mỗi 7 ngày (7, 14, 21, 28...)
+    INSERT INTO program.plan_quiz_schedules (id, plan_template_id, quiz_template_id, start_offset_day, every_days, order_no, created_at)
+    VALUES (gen_random_uuid(), l1_id, weekly_quiz_id, 7, 7, 1, now())
+    ON CONFLICT DO NOTHING;
+
+    -- 3. Cấu hình Lịch cho Level 2 (45 ngày)
+    INSERT INTO program.plan_quiz_schedules (id, plan_template_id, quiz_template_id, start_offset_day, every_days, order_no, created_at)
+    VALUES (gen_random_uuid(), l2_id, weekly_quiz_id, 7, 7, 1, now())
+    ON CONFLICT DO NOTHING;
+
+    -- 4. Cấu hình Lịch cho Level 3 (60 ngày)
+    INSERT INTO program.plan_quiz_schedules (id, plan_template_id, quiz_template_id, start_offset_day, every_days, order_no, created_at)
+    VALUES (gen_random_uuid(), l3_id, weekly_quiz_id, 7, 7, 1, now())
+    ON CONFLICT DO NOTHING;
 
 END $$;
