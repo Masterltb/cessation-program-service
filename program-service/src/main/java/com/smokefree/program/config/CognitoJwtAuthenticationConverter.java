@@ -14,35 +14,47 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Custom JWT Converter for AWS Cognito JWT Tokens.
+ * Bộ chuyển đổi JWT tùy chỉnh cho AWS Cognito JWT Tokens.
  * <p>
- * Extracts user information from Cognito JWT claims:
- * - sub: User ID (UUID)
- * - cognito:groups: User groups (admin, coach, customer)
+ * Trích xuất thông tin người dùng từ các claim của Cognito JWT:
+ * - sub: ID người dùng (UUID)
+ * - cognito:groups: Nhóm người dùng (admin, coach, customer)
  * <p>
- * Maps groups to Spring Security authorities with "ROLE_" prefix.
+ * Ánh xạ các nhóm này thành các quyền (authorities) của Spring Security với tiền tố "ROLE_".
  */
 @Component
 public class CognitoJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
+    /**
+     * Chuyển đổi đối tượng JWT thành AbstractAuthenticationToken.
+     *
+     * @param jwt Token JWT đầu vào.
+     * @return Token xác thực chứa thông tin principal và quyền hạn.
+     */
     @Override
     public AbstractAuthenticationToken convert(@NonNull Jwt jwt) {
         Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
 
-        // Use 'sub' claim as principal (User ID)
+        // Sử dụng claim 'sub' làm principal (User ID)
         String principal = jwt.getClaimAsString("sub");
 
         return new JwtAuthenticationToken(jwt, authorities, principal);
     }
 
+    /**
+     * Trích xuất danh sách quyền hạn từ claim 'cognito:groups'.
+     *
+     * @param jwt Token JWT.
+     * @return Danh sách các GrantedAuthority.
+     */
     private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
         List<GrantedAuthority> authorities = new ArrayList<>();
 
-        // Extract cognito:groups claim
+        // Trích xuất claim cognito:groups
         List<String> groups = jwt.getClaimAsStringList("cognito:groups");
 
         if (groups != null && !groups.isEmpty()) {
-            // Map each group to ROLE_<GROUP_UPPERCASE>
+            // Ánh xạ mỗi nhóm thành ROLE_<TÊN_NHÓM_IN_HOA>
             for (String group : groups) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_" + group.toUpperCase()));
             }

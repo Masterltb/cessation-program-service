@@ -19,6 +19,10 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+/**
+ * Triển khai của PlanTemplateService.
+ * Quản lý logic nghiệp vụ liên quan đến các mẫu lộ trình cai thuốc (Plan Templates), bao gồm việc lấy danh sách, chi tiết, và đề xuất lộ trình dựa trên mức độ nghiện.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,6 +35,12 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
     private final PlanStepRepo stepRepo;
     private final SeverityRuleService severityRules;
 
+    /**
+     * Lấy danh sách tóm tắt tất cả các mẫu lộ trình hiện có.
+     * Danh sách được sắp xếp theo cấp độ (level) và mã (code).
+     *
+     * @return Danh sách PlanTemplateSummaryRes.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<PlanTemplateSummaryRes> listAll() {
@@ -50,6 +60,12 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
                 .toList();
     }
 
+    /**
+     * Lấy thông tin chi tiết của một mẫu lộ trình cụ thể, bao gồm danh sách các bước (steps).
+     *
+     * @param id ID của mẫu lộ trình.
+     * @return Chi tiết mẫu lộ trình và các bước thực hiện.
+     */
     @Override
     @Transactional(readOnly = true)
     public PlanTemplateDetailRes getDetail(UUID id) {
@@ -80,6 +96,13 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
         );
     }
 
+    /**
+     * Đề xuất lộ trình phù hợp dựa trên mức độ nghiêm trọng (Severity) của người dùng.
+     * Logic: LOW -> 30 ngày, MODERATE -> 45 ngày, HIGH -> 60 ngày.
+     *
+     * @param severity Mức độ nghiêm trọng (LOW, MODERATE, HIGH) hoặc điểm số.
+     * @return Lộ trình được đề xuất kèm theo lý do.
+     */
     @Override
     @Transactional(readOnly = true)
     public PlanRecommendationRes recommendBySeverity(String severity) {
@@ -102,6 +125,15 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
         );
     }
 
+    /**
+     * Lấy danh sách các ngày và nhiệm vụ chi tiết trong lộ trình.
+     * Hỗ trợ mở rộng thông tin module nội dung (bài học) nếu được yêu cầu.
+     *
+     * @param templateId   ID của mẫu lộ trình.
+     * @param expandModule Có lấy chi tiết nội dung bài học (payload) hay không.
+     * @param lang         Ngôn ngữ nội dung.
+     * @return Cấu trúc dữ liệu phân theo ngày.
+     */
     @Override
     @Transactional(readOnly = true)
     public PlanDaysRes getDays(UUID templateId, boolean expandModule, String lang) {
@@ -110,6 +142,7 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
 
         var steps = stepRepo.findByTemplateIdOrderByDayNoAscSlotAsc(t.getId());
 
+        // Nhóm các bước (steps) theo ngày (dayNo)
         var grouped = steps.stream().collect(Collectors.groupingBy(
                 PlanStep::getDayNo,
                 TreeMap::new,
@@ -125,6 +158,7 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
 
                         boolean hasModule = moduleCode != null && !moduleCode.isBlank();
 
+                        // Nếu bước này có gắn module nội dung, gọi service để lấy thông tin
                         if (hasModule) {
                             try {
                                 var m = moduleService.getLatestByCode(moduleCode, lang);
@@ -168,7 +202,14 @@ public class PlanTemplateServiceImpl implements PlanTemplateService {
     }
 
 
-
+    /**
+     * Lấy danh sách các ngày và nhiệm vụ dựa trên mã code của lộ trình.
+     *
+     * @param code         Mã code của lộ trình (ví dụ: L1_30D).
+     * @param expandModule Có mở rộng chi tiết module hay không.
+     * @param lang         Ngôn ngữ.
+     * @return Cấu trúc dữ liệu phân theo ngày.
+     */
     @Override
     @Transactional(readOnly = true)
     public PlanDaysRes getDaysByCode(String code, boolean expandModule, String lang) {

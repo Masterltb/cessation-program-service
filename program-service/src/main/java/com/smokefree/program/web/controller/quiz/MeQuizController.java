@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Controller xử lý các thao tác liên quan đến bài kiểm tra của người dùng hiện tại (Me).
+ * Cung cấp các API để lấy danh sách bài thi cần làm, bắt đầu làm bài, lưu câu trả lời và nộp bài.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/v1/me/quizzes")
@@ -24,6 +28,14 @@ public class MeQuizController {
 
     private final QuizFlowService quizFlowService;
 
+    /**
+     * Lấy danh sách các bài kiểm tra cần hoàn thành của người dùng.
+     *
+     * @param userId    ID của người dùng (từ header).
+     * @param userGroup Nhóm người dùng (từ header, tùy chọn).
+     * @param userTier  Hạng người dùng (từ header, tùy chọn).
+     * @return Danh sách các bài kiểm tra cần làm (DueItems).
+     */
     @GetMapping
     public ResponseEntity<Map<String, Object>> listDueQuizzes(
             @RequestHeader("X-User-Id") UUID userId,
@@ -47,6 +59,14 @@ public class MeQuizController {
         }
     }
 
+    /**
+     * Mở một lượt thi mới cho một bài kiểm tra cụ thể.
+     *
+     * @param userId     ID của người dùng.
+     * @param templateId ID của mẫu bài kiểm tra.
+     * @param userGroup  Nhóm người dùng.
+     * @return Thông tin chi tiết về lượt thi vừa tạo.
+     */
     @PostMapping("/{templateId}/open")
     public ResponseEntity<Map<String, Object>> openAttempt(
             @RequestHeader("X-User-Id") UUID userId,
@@ -73,6 +93,14 @@ public class MeQuizController {
         }
     }
 
+    /**
+     * Lưu câu trả lời cho một câu hỏi trong lượt thi.
+     *
+     * @param userId    ID của người dùng.
+     * @param attemptId ID của lượt thi.
+     * @param request   Đối tượng chứa thông tin câu trả lời.
+     * @return Phản hồi thành công.
+     */
     @PutMapping("/{attemptId}/answer")
     public ResponseEntity<Map<String, Object>> saveAnswer(
             @RequestHeader("X-User-Id") UUID userId,
@@ -94,6 +122,13 @@ public class MeQuizController {
         }
     }
 
+    /**
+     * Nộp bài kiểm tra để chấm điểm và kết thúc lượt thi.
+     *
+     * @param userId    ID của người dùng.
+     * @param attemptId ID của lượt thi.
+     * @return Kết quả bài thi.
+     */
     @PostMapping("/{attemptId}/submit")
     public ResponseEntity<Map<String, Object>> submitQuiz(
             @RequestHeader("X-User-Id") UUID userId,
@@ -114,6 +149,13 @@ public class MeQuizController {
         }
     }
 
+    /**
+     * Xây dựng phản hồi lỗi chuẩn hóa.
+     *
+     * @param status  Mã trạng thái HTTP.
+     * @param message Thông báo lỗi.
+     * @return ResponseEntity chứa thông tin lỗi.
+     */
     private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String message) {
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("success", false);

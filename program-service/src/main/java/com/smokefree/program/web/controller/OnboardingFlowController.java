@@ -22,6 +22,10 @@ import java.util.LinkedHashMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * Controller quản lý luồng Onboarding (nhập môn) cho người dùng mới.
+ * Cung cấp API để lấy bài đánh giá đầu vào và nộp kết quả để nhận lộ trình cai thuốc.
+ */
 @RestController
 @RequestMapping("/api/onboarding")
 @RequiredArgsConstructor
@@ -32,6 +36,13 @@ public class OnboardingFlowController {
     private final OnboardingFlowService onboardingFlowService;
     private final QuizTemplateRepository quizTemplateRepository;
 
+    /**
+     * Xử lý việc nộp bài đánh giá đầu vào (Baseline Quiz).
+     * Dựa trên câu trả lời, hệ thống sẽ đề xuất lộ trình phù hợp.
+     *
+     * @param req  Đối tượng chứa danh sách câu trả lời của người dùng.
+     * @return Kết quả đánh giá và lộ trình được đề xuất.
+     */
     @PostMapping("/baseline")
     public BaselineResultRes baseline(@RequestBody @Valid QuizAnswerReq req) {
         UUID userId = SecurityUtil.requireUserId();
@@ -40,15 +51,20 @@ public class OnboardingFlowController {
     }
 
     /**
-     * Lấy nội dung quiz onboarding cho user chưa có Program.
+     * Lấy nội dung bài đánh giá đầu vào (câu hỏi, lựa chọn) cho user chưa có Program.
+     * Dựa trên mã template cố định là "ONBOARDING_ASSESSMENT".
+     *
+     * @return Thông tin chi tiết về bài quiz (OpenAttemptRes) để hiển thị lên UI.
      */
     @GetMapping("/baseline/quiz")
     @Transactional(Transactional.TxType.SUPPORTS)
     public OpenAttemptRes getBaselineQuiz() {
+        // Tìm template theo mã code cố định
         var template = quizTemplateRepository.findByCode(ONBOARDING_TEMPLATE_CODE)
                 .orElseThrow(() -> new NotFoundException(
                         "Onboarding quiz template not found: " + ONBOARDING_TEMPLATE_CODE));
 
+        // Map danh sách câu hỏi và lựa chọn sang DTO
         var questions = template.getQuestions().stream()
                 .sorted(Comparator.comparing(q -> q.getId().getQuestionNo()))
                 .map(q -> new OpenAttemptRes.QuestionView(
@@ -66,7 +82,7 @@ public class OnboardingFlowController {
                 .toList();
 
         return new OpenAttemptRes(
-                null,
+                null, // Không có attemptId vì đây là quiz tĩnh, chưa tạo lượt thi
                 template.getId(),
                 template.getVersion(),
                 questions

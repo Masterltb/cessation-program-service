@@ -19,6 +19,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Triển khai của AdminQuizService.
+ * Xử lý quản lý vòng đời của các Mẫu câu hỏi (tạo, cập nhật, xuất bản, lưu trữ).
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,6 +31,12 @@ public class AdminQuizServiceImpl implements AdminQuizService {
     private final QuizTemplateRepository tplRepo;
     private final QuizAssignmentRepository assignmentRepo;
 
+    /**
+     * Tạo một mẫu câu hỏi mới cùng với các câu hỏi và lựa chọn của nó.
+     *
+     * @param req Đối tượng yêu cầu chứa chi tiết bài kiểm tra.
+     * @return QuizTemplate đã được tạo.
+     */
     @Override
     public QuizTemplate createFullQuiz(CreateFullQuizReq req) {
         QuizTemplate template = new QuizTemplate();
@@ -34,6 +44,7 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         template.setCode(req.code());
         template.setVersion(req.version() != null ? req.version() : 1);
 
+        // Ánh xạ câu hỏi và lựa chọn từ DTO sang thực thể Domain
         for (QuestionDto questionDto : req.questions()) {
             QuizTemplateQuestion newQuestion = new QuizTemplateQuestion();
             newQuestion.setId(new QuizTemplateQuestionId(template.getId(), questionDto.orderNo()));
@@ -57,6 +68,14 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         return tplRepo.save(template);
     }
 
+    /**
+     * Cập nhật một mẫu câu hỏi hiện có.
+     * Thao tác này chỉ được phép đối với các mẫu ở trạng thái DRAFT (Bản nháp).
+     * Nó thực hiện thay thế hoàn toàn các câu hỏi và lựa chọn.
+     *
+     * @param templateId UUID của mẫu cần cập nhật.
+     * @param req        Yêu cầu cập nhật chứa dữ liệu mới.
+     */
     @Override
     public void updateFullQuiz(UUID templateId, UpdateFullQuizReq req) {
         QuizTemplate template = tplRepo.findById(templateId)
@@ -71,7 +90,9 @@ public class AdminQuizServiceImpl implements AdminQuizService {
             template.setVersion(req.version());
         }
 
+        // Xóa các câu hỏi hiện có để thay thế bằng câu hỏi mới (Chiến lược Cập nhật Toàn bộ)
         template.getQuestions().clear();
+        // Flush để đảm bảo việc xóa diễn ra trước khi chèn để tránh xung đột tiềm ẩn
         tplRepo.flush();
 
         for (QuestionDto questionDto : req.questions()) {
@@ -98,6 +119,11 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         tplRepo.save(template);
     }
 
+    /**
+     * Xuất bản một mẫu DRAFT, làm cho nó khả dụng để sử dụng.
+     *
+     * @param templateId UUID của mẫu cần xuất bản.
+     */
     @Override
     public void publishTemplate(UUID templateId) {
         QuizTemplate t = tplRepo.findById(templateId)
@@ -108,6 +134,11 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         tplRepo.save(t);
     }
 
+    /**
+     * Lưu trữ một mẫu, làm cho nó không còn khả dụng cho các bài tập mới.
+     *
+     * @param templateId UUID của mẫu cần lưu trữ.
+     */
     @Override
     public void archiveTemplate(UUID templateId) {
         QuizTemplate t = tplRepo.findById(templateId)
@@ -131,6 +162,12 @@ public class AdminQuizServiceImpl implements AdminQuizService {
                 .orElseThrow(() -> new NotFoundException("Template not found: " + templateId));
     }
 
+    /**
+     * Xóa một mẫu nếu nó chưa được gán.
+     * Nếu đã được gán, ném ra ConflictException.
+     *
+     * @param templateId UUID của mẫu cần xóa.
+     */
     @Override
     public void deleteTemplate(UUID templateId) {
         QuizTemplate template = tplRepo.findById(templateId)
@@ -143,6 +180,12 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         tplRepo.delete(template);
     }
 
+    /**
+     * Cập nhật nội dung (câu hỏi/lựa chọn) của một mẫu DRAFT mà không thay đổi siêu dữ liệu như tên/phiên bản.
+     *
+     * @param templateId UUID của mẫu.
+     * @param req        Yêu cầu cập nhật nội dung.
+     */
     @Override
     public void updateContent(UUID templateId, com.smokefree.program.web.dto.quiz.admin.UpdateQuizContentReq req) {
         QuizTemplate template = tplRepo.findWithQuestionsById(templateId)
@@ -176,6 +219,12 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         template.setUpdatedAt(Instant.now());
         tplRepo.save(template);
     }
+
+    /**
+     * Đưa một mẫu đã PUBLISHED (Xuất bản) trở lại trạng thái DRAFT (Bản nháp).
+     *
+     * @param templateId UUID của mẫu.
+     */
     @Override
     public void revertToDraft(UUID templateId) {
         QuizTemplate t = tplRepo.findById(templateId)
@@ -186,7 +235,7 @@ public class AdminQuizServiceImpl implements AdminQuizService {
         }
 
         t.setStatus(QuizTemplateStatus.DRAFT);
-        t.setPublishedAt(null); // Xóa thời gian publish
+        t.setPublishedAt(null); // Xóa thời gian xuất bản
         t.setUpdatedAt(Instant.now());
         tplRepo.save(t);
     }

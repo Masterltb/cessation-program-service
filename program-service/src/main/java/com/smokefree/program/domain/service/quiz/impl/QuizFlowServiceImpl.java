@@ -23,6 +23,10 @@ import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Triển khai logic luồng làm bài thi của người dùng.
+ * Bao gồm: Tính toán bài tập đến hạn, mở lượt thi, lưu câu trả lời và nộp bài.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -40,17 +44,17 @@ public class QuizFlowServiceImpl implements QuizFlowService {
     private final com.smokefree.program.domain.service.BadgeService badgeService;
 
     /**
-     * Retrieves the list of quizzes currently due for the user.
+     * Lấy danh sách các bài kiểm tra hiện đang đến hạn cho người dùng.
      * <p>
-     * Optimization Strategy:
-     * 1. Fetch all active assignments for the program.
-     * 2. Bulk fetch all quiz results (Map: TemplateId -> Latest Result) to avoid N+1 queries.
-     * 3. Bulk fetch all quiz templates to avoid N+1 queries.
-     * 4. Process in-memory to determine due dates based on schedule (ONCE vs Recurring).
+     * Chiến lược tối ưu hóa:
+     * 1. Lấy tất cả các phân công (assignments) đang hoạt động cho chương trình.
+     * 2. Lấy hàng loạt kết quả thi (Map: TemplateId -> Kết quả mới nhất) để tránh lỗi N+1 queries.
+     * 3. Lấy hàng loạt mẫu câu hỏi (templates) để tránh lỗi N+1 queries.
+     * 4. Xử lý trong bộ nhớ để xác định ngày đến hạn dựa trên lịch trình (ONCE vs Lặp lại).
      * </p>
      *
-     * @param userId The ID of the user.
-     * @return List of due items sorted by schedule order and due date.
+     * @param userId ID của người dùng.
+     * @return Danh sách các mục đến hạn được sắp xếp theo thứ tự lịch trình và ngày đến hạn.
      */
     @Override
     @Transactional(readOnly = true)
@@ -69,11 +73,11 @@ public class QuizFlowServiceImpl implements QuizFlowService {
             throw new com.smokefree.program.web.error.SubscriptionRequiredException("Trial expired");
         }
 
-        // 1. Fetch all assignments
+        // 1. Lấy tất cả assignments
         List<QuizAssignment> assignments = quizAssignmentRepository.findActiveSortedByStartOffset(program.getId());
         if (assignments.isEmpty()) return List.of();
 
-        // 2. Bulk fetch all results (Map: TemplateId -> Latest Result)
+        // 2. Lấy hàng loạt kết quả (Map: TemplateId -> Kết quả mới nhất)
         Map<UUID, QuizResult> latestResultsMap = quizResultRepository.findByProgramId(program.getId())
                 .stream()
                 .collect(Collectors.toMap(
@@ -82,7 +86,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
                         (existing, replacement) -> existing.getCreatedAt().isAfter(replacement.getCreatedAt()) ? existing : replacement
                 ));
 
-        // 3. Bulk fetch all templates
+        // 3. Lấy hàng loạt templates
         Set<UUID> templateIds = assignments.stream()
                 .map(QuizAssignment::getTemplateId)
                 .collect(Collectors.toSet());
@@ -100,12 +104,12 @@ public class QuizFlowServiceImpl implements QuizFlowService {
             QuizResult lastResult = latestResultsMap.get(assignment.getTemplateId());
             boolean alreadyTaken = (lastResult != null);
 
-            // Logic check Due
+            // Logic kiểm tra đến hạn (Due)
             Instant displayDueDate = calculateDisplayDueDateOptimized(assignment, program, lastResult);
             boolean isDue = checkIsDueOptimized(assignment, program, now, displayDueDate);
 
             if (isDue) {
-                // Logic ONCE check
+                // Logic kiểm tra loại ONCE (chỉ làm 1 lần)
                 boolean isRepeatable = (assignment.getOrigin() == QuizAssignmentOrigin.STREAK_RECOVERY);
                 if (assignment.getScope() == AssignmentScope.ONCE && alreadyTaken && !isRepeatable) {
                     continue;
@@ -125,6 +129,9 @@ public class QuizFlowServiceImpl implements QuizFlowService {
                 .toList();
     }
 
+    /**
+     * Kiểm tra xem một bài tập có đến hạn hay không (phiên bản tối ưu).
+     */
     private boolean checkIsDueOptimized(QuizAssignment assignment, Program program, Instant now, Instant dueDate) {
         int startOffset = Optional.ofNullable(assignment.getStartOffsetDay()).orElse(0);
         if (startOffset > 0 && program.getCurrentDay() < startOffset) {
@@ -137,6 +144,9 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         return true;
     }
 
+    /**
+     * Tính toán ngày hiển thị đến hạn (Display Due Date).
+     */
     private Instant calculateDisplayDueDateOptimized(QuizAssignment assignment, Program program, QuizResult lastResult) {
         int startOffset = Optional.ofNullable(assignment.getStartOffsetDay()).orElse(0);
         int intervalDays = Optional.ofNullable(assignment.getEveryDays()).orElse(0);
@@ -215,6 +225,13 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         return program.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant();
     }
 
+    /**
+     * Mở một lượt thi mới (Attempt).
+     *
+     * @param userId     ID người dùng.
+     * @param templateId ID mẫu câu hỏi.
+     * @return Thông tin lượt thi và danh sách câu hỏi.
+     */
     @Override
     @Transactional
     public OpenAttemptRes openAttempt(UUID userId, UUID templateId) {
@@ -232,16 +249,19 @@ public class QuizFlowServiceImpl implements QuizFlowService {
                 .findActiveByProgramAndTemplate(program.getId(), templateId)
                 .orElseThrow(() -> new ForbiddenException("Template not assigned to your program"));
 
+        // Kiểm tra nếu bài ONCE đã làm rồi thì chặn (trừ khi là Streak Recovery)
         boolean isRepeatable = (assignment.getOrigin() == QuizAssignmentOrigin.STREAK_RECOVERY);
         if (assignment.getScope() == AssignmentScope.ONCE &&
                 quizResultRepository.existsByProgramIdAndTemplateId(program.getId(), templateId) && !isRepeatable) {
             throw new ConflictException("Quiz already completed");
         }
 
+        // Kiểm tra đã đến hạn chưa
         if (!isQuizDue(assignment, program, Instant.now())) {
             throw new ConflictException("Quiz is not due yet");
         }
 
+        // Kiểm tra xem có lượt thi nào đang mở không
         quizAttemptRepository.findFirstByProgramIdAndTemplateIdAndStatus(
             program.getId(), templateId, AttemptStatus.OPEN
         ).ifPresent(a -> { throw new ConflictException("An attempt is already open"); });
@@ -249,6 +269,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         QuizTemplate t = quizTemplateRepository.findById(templateId)
             .orElseThrow(() -> new NotFoundException("Template not found"));
 
+        // Tạo lượt thi mới
         QuizAttempt attempt = new QuizAttempt();
         attempt.setId(UUID.randomUUID());
         attempt.setProgramId(program.getId());
@@ -259,6 +280,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         attempt.setAnswers(new ArrayList<>());
         quizAttemptRepository.save(attempt);
 
+        // Map câu hỏi sang DTO (ẩn đáp án đúng)
         List<OpenAttemptRes.QuestionView> questions = t.getQuestions().stream()
             .sorted(Comparator.comparing(q -> q.getId().getQuestionNo()))
             .map(q -> new OpenAttemptRes.QuestionView(
@@ -278,6 +300,9 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         return new OpenAttemptRes(attempt.getId(), t.getId(), t.getVersion(), questions);
     }
 
+    /**
+     * Lưu câu trả lời của người dùng.
+     */
     @Override
     @Transactional
     public void saveAnswer(UUID userId, UUID attemptId, AnswerReq req) {
@@ -293,6 +318,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
             throw new ForbiddenException("Attempt is not OPEN");
         }
 
+        // Xóa câu trả lời cũ cho câu hỏi này (nếu có) và thêm mới
         attempt.getAnswers().removeIf(a -> a.getId().getQuestionNo().equals(req.questionNo()));
 
         QuizAnswerId id = new QuizAnswerId();
@@ -309,6 +335,9 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         quizAttemptRepository.save(attempt);
     }
 
+    /**
+     * Nộp bài thi, chấm điểm và lưu kết quả.
+     */
     @Override
     @Transactional
     public SubmitRes submit(UUID userId, UUID attemptId) {
@@ -324,6 +353,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
             throw new ForbiddenException("Attempt is not OPEN");
         }
 
+        // Tính điểm và mức độ nghiêm trọng
         int totalScore = attempt.getAnswers().stream().mapToInt(QuizAnswer::getAnswer).sum();
         SeverityLevel severity = severityRuleService.fromScore(totalScore);
         
@@ -331,6 +361,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         QuizTemplate template = quizTemplateRepository.findById(templateId)
             .orElseThrow(() -> new NotFoundException("Template not found (data inconsistent)"));
 
+        // Lưu kết quả (Result)
         QuizResult result = new QuizResult();
         result.setId(UUID.randomUUID());
         result.setProgramId(attempt.getProgramId());
@@ -341,11 +372,12 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         result.setCreatedAt(Instant.now());
         quizResultRepository.save(result);
 
+        // Cập nhật trạng thái lượt thi
         attempt.setStatus(AttemptStatus.SUBMITTED);
         attempt.setSubmittedAt(Instant.now());
         quizAttemptRepository.save(attempt);
 
-        // Check Quiz Badges
+        // Kiểm tra huy hiệu (Badges)
         programRepository.findById(attempt.getProgramId())
                 .ifPresent(badgeService::checkQuizProgress);
 
@@ -355,6 +387,9 @@ public class QuizFlowServiceImpl implements QuizFlowService {
         return new SubmitRes(attempt.getId(), totalScore, severity.name());
     }
 
+    /**
+     * Xử lý các hành động sau khi nộp bài (ví dụ: Khôi phục Streak).
+     */
     private void handlePostSubmissionActions(QuizAttempt attempt) {
         QuizAssignment assignment = quizAssignmentRepository
                 .findActiveByProgramAndTemplate(attempt.getProgramId(), attempt.getTemplateId())
@@ -368,6 +403,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
             return;
         }
 
+        // Logic khôi phục chuỗi (Streak Recovery)
         if (assignment.getOrigin() == QuizAssignmentOrigin.STREAK_RECOVERY) {
             log.info("[QuizFlow] Handling STREAK_RECOVERY post-submission for program: {}", attempt.getProgramId());
 
@@ -380,9 +416,11 @@ public class QuizFlowServiceImpl implements QuizFlowService {
                 if (brokenStreak != null && brokenStreak.getEndedAt() == null) {
                     log.info("[QuizFlow] Streak {} already restored, skip duplicate recovery.", brokenStreak.getId());
                 } else {
+                    // Gọi service để nối lại chuỗi
                     log.info("[QuizFlow] Found last streak break {}. Calling StreakService to restore.", lastBreak.getId());
                     streakService.restoreStreak(lastBreak.getId());
 
+                    // Tăng đếm số lần sử dụng
                     Program program = programRepository.findById(attempt.getProgramId()).orElse(null);
                     if (program != null) {
                         program.setStreakRecoveryUsedCount(program.getStreakRecoveryUsedCount() + 1);
@@ -393,6 +431,7 @@ public class QuizFlowServiceImpl implements QuizFlowService {
                 log.warn("[QuizFlow] No streak break found for program {}. Cannot restore streak.", attempt.getProgramId());
             }
 
+            // Vô hiệu hóa bài tập này sau khi đã dùng để khôi phục
             assignment.setActive(false);
             quizAssignmentRepository.save(assignment);
         }
