@@ -12,69 +12,57 @@ Hệ thống kết hợp giữa Frontend tĩnh (S3/CloudFront), Backend động 
 
 ```mermaid
 graph TD
-    subgraph "Public Internet"
-        User[User / Client]
-        Dev[Developer]
+    %% Actors
+    User((User / Client))
+    Dev((Developer))
+
+    %% AWS Public Zone
+    subgraph "AWS Public Zone"
+        CF[CloudFront CDN]
+        S3[S3 Bucket - Static Web]
+        APIGW[API Gateway]
+        Cognito[Cognito Auth]
+        Lambda[Lambda - Payment Svc]
     end
 
-    subgraph "AWS Cloud (ap-southeast-1)"
+    %% AWS Private VPC
+    subgraph "AWS VPC Private Network"
+        VPCLink[VPC Link]
+        NLB[Network Load Balancer]
         
-        %% Frontend Layer
-        CF[CloudFront (CDN)]
-        S3[S3 Bucket<br/>(Static Web)]
-        
-        %% API & Auth Layer
-        APIGW[API Gateway]
-        Cognito[Cognito<br/>(Auth/Identity)]
-        
-        %% Serverless Path
-        Lambda[AWS Lambda<br/>(Payment Service)]
+        subgraph "App Layer - 192.0.0.0/18"
+            CessationSvc[EC2 - Cessation Service]
+            UserSvc[EC2 - User Service]
+        end
 
-        %% VPC Boundary
-        subgraph "VPC (Virtual Private Cloud)"
-            
-            subgraph "Backend Private Subnet (192.0.0.0/18)"
-                VPCLink[VPC Link]
-                NLB[Network Load Balancer]
-                
-                subgraph "EC2 Instances (App Layer)"
-                    CessationSvc[<b>Cessation Service</b><br/>(Java 25 Container)]
-                    UserSvc[User Service]
-                    SocialSvc[Social Service]
-                end
-            end
-
-            subgraph "DB Private Subnet (192.0.0.0/22)"
-                subgraph "Self-managed DBs on EC2"
-                    CessationDB[(<b>Cessation DB</b><br/>PostgreSQL on EC2)]
-                    UserDB[(User DB<br/>PSQL)]
-                    SocialDB[(Social DB<br/>MongoDB)]
-                end
-            end
+        subgraph "Data Layer - 192.0.0.0/22"
+            CessationDB[(PostgreSQL - Self Managed)]
+            UserDB[(PostgreSQL - Self Managed)]
         end
     end
 
-    %% DevOps Flow
-    Dev -->|Commit Code| GitLab[GitLab Repo]
-    GitLab -->|CI/CD Pipeline| ECR[Elastic Container Registry]
-    ECR -.->|Pull Image| CessationSvc
+    %% DevOps Tools
+    GitLab[GitLab Repo]
+    ECR[AWS ECR]
 
-    %% User Flow - Frontend
+    %% Connections
     User -->|HTTPS| CF
     CF --> S3
-
-    %% User Flow - Backend
     User -->|API Calls| APIGW
-    APIGW <-->|Auth Check| Cognito
     
-    %% Path 1: Payment
-    APIGW -->|/payment| Lambda
-
-    %% Path 2: Cessation Service
+    APIGW <-->|Auth| Cognito
+    APIGW -->|Payment| Lambda
+    
+    %% Core Flow
     APIGW -->|/cessation| VPCLink
     VPCLink --> NLB
     NLB --> CessationSvc
     CessationSvc <-->|JDBC| CessationDB
+
+    %% DevOps Flow
+    Dev --> GitLab
+    GitLab -->|Build| ECR
+    ECR -.->|Pull Image| CessationSvc
 ```
 
 ---
@@ -136,4 +124,3 @@ Hệ thống chia làm 2 nhánh xử lý tại API Gateway:
 | `spring.datasource.url` | `jdbc:postgresql://<EC2_DB_PRIVATE_IP>:5432/cessation_db` | Trỏ về IP nội bộ của EC2 chứa DB. |
 | `server.port` | `8080` | Port mà container lắng nghe (NLB sẽ forward vào đây). |
 | `spring.security.oauth2...` | Cognito URL | Để validate token từ API Gateway chuyển xuống. |
-
